@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
 
 ROOT = Path(__file__).parent
@@ -264,12 +265,7 @@ def _draw_band(fig, t, p10, p25, p50, p75, p90, color,
                              name=name, showlegend=showlegend))
 
 
-def _base_layout(fig, title, ylabel, height, legend_inside=False):
-    """Shared layout. Legend inside top-left (avoids eating height for small charts)."""
-    leg = dict(font=dict(size=7), x=0.01, y=0.99,
-               xanchor="left", yanchor="top",
-               bgcolor="rgba(255,255,255,0.75)",
-               bordercolor="#e5e7eb", borderwidth=1) if legend_inside else {}
+def _base_layout(fig, title, ylabel, height):
     fig.update_layout(
         title=dict(text=title, font=dict(size=10), x=0.5, xanchor="center"),
         height=height,
@@ -277,8 +273,7 @@ def _base_layout(fig, title, ylabel, height, legend_inside=False):
         xaxis=dict(title=dict(text="years", font=dict(size=8)), tickfont=dict(size=8)),
         yaxis=dict(title=dict(text=ylabel, font=dict(size=8)), tickfont=dict(size=8)),
         paper_bgcolor="white", plot_bgcolor="#f8f9fa",
-        showlegend=legend_inside,
-        legend=leg,
+        showlegend=False,
     )
 
 
@@ -301,13 +296,14 @@ def small_chart_multi(run_results, col, title, ylabel, show_unc=True, height=200
         t, p10, p25, p50, p75, p90 = _percentiles(exp["results"], col)
         if t is None:
             continue
+        # showlegend=False — legend is shown once in the color-key strip, not inside each chart
         _draw_band(fig, t, p10, p25, p50, p75, p90, exp["color"],
-                   name=exp["name"], showlegend=True, show_unc=show_unc)
+                   show_unc=show_unc)
         has_data = True
     if not has_data:
         fig.add_annotation(text="no data", xref="paper", yref="paper",
                            x=0.5, y=0.5, showarrow=False, font=dict(size=9, color="#aaa"))
-    _base_layout(fig, title, ylabel, height, legend_inside=True)
+    _base_layout(fig, title, ylabel, height)
     return fig
 
 
@@ -349,17 +345,15 @@ def species_chart(results_or_list, *, multi=False, sp_filter=None,
                 t, p10, p25, p50, p75, p90 = _percentiles(exp["results"], col)
                 if t is None:
                     continue
+                n_before = len(fig.data)
                 _draw_band(fig, t, p10, p25, p50, p75, p90, exp["color"],
                            name=f"{exp['name']} — {sp_name}",
-                           showlegend=True, show_unc=show_unc,
-                           # bands use same legendgroup so toggling median hides bands too
-                           )
-                # override legendgroup for the last-added median trace
-                fig.data[-1].legendgroup = f"{exp['name']}_{col}"
-                if show_unc:
-                    for tr in fig.data[-5:-1]:
-                        tr.legendgroup = f"{exp['name']}_{col}"
-                # vary line dash by species index so they're distinguishable
+                           showlegend=True, show_unc=show_unc)
+                lg = f"{exp['name']}_{col}"
+                for tr in fig.data[n_before:]:       # exact slice, no index guessing
+                    tr.legendgroup = lg
+                for tr in fig.data[n_before:-1]:     # all but the median are invisible in legend
+                    tr.showlegend = False
                 fig.data[-1].line.dash = DASHES[i % len(DASHES)]
         title = "Target Species — experiments compared"
 
@@ -642,6 +636,15 @@ if page == "🗺 Simulate":
     # species filter lives above the right column; collect it before layout
     sp_all = list(SPECIES.keys())
     sp_labels = {k: v[1] for k, v in SPECIES.items()}
+
+    # ── Color key (shown once, above all charts) ─────────────────────────────
+    if not single:
+        dots = " &nbsp;&nbsp; ".join(
+            f'<span style="color:{e["color"]};font-size:1.05rem">●</span>'
+            f'<span style="font-size:0.80rem;color:#374151"> {e["name"]}</span>'
+            for e in rr_filtered
+        )
+        st.markdown(dots, unsafe_allow_html=True)
 
     # ── Main chart layout ────────────────────────────────────────────────────
     col_left, col_right = st.columns([3, 2], gap="small")
