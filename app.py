@@ -487,6 +487,13 @@ with st.sidebar:
 
     # ── Simulate sidebar ──────────────────────────────────────────────────────
     if page == "🗺 Simulate":
+        st.info(
+            "**1.** Tick the reference scenarios to include as baselines.\n\n"
+            "**2.** Build one or more Scenario 2 variants: load a preset or "
+            "toggle switches manually, name the variant, then click **+ Add to run list**.\n\n"
+            "**3.** Set simulation length, agreement duration, and MC runs.\n\n"
+            "**4.** Click **▶ Run** — all experiments run simultaneously."
+        )
 
         # ── Reference scenarios ───────────────────────────────────────────────
         st.markdown("**Reference scenarios**")
@@ -593,6 +600,12 @@ with st.sidebar:
 
     # ── Parameters sidebar ────────────────────────────────────────────────────
     elif page == "⚙ Parameters":
+        st.info(
+            "Edit the 21 ecological & socioeconomic parameters used by the model.\n\n"
+            "Enable **Uncertain?** on any parameter to sample it from a distribution "
+            "in every MC run. Choose **Uniform**, **Normal**, or **Triangular** and "
+            "set the bounds — the median stays fixed for the deterministic reference."
+        )
         if st.button("↺ Reset all to defaults", key="reset_params"):
             st.session_state.eco_vals = {k: v["default"] for k, v in ECO_PARAMS.items()}
             st.session_state.unc = {
@@ -605,6 +618,14 @@ with st.sidebar:
 
     # ── MCDA sidebar ──────────────────────────────────────────────────────────
     elif page == "📊 MCDA":
+        st.info(
+            "Requires **≥ 2 experiments** from the last simulation run.\n\n"
+            "Set a **weight (0–100)** for each criterion below — criteria with "
+            "weight 0 are excluded from scoring.\n\n"
+            "The page shows: weighted ranking · radar chart · score profile "
+            "per criterion with MC bands · ranking across criteria · "
+            "weight sensitivity (1 000 Dirichlet draws)."
+        )
         n_res = len(st.session_state.run_results)
         if n_res >= 2:
             st.caption(f"{n_res} experiments from last run.")
