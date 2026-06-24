@@ -406,24 +406,28 @@ def species_chart(results_or_list, *, multi=False, sp_filter=None,
         exps = results_or_list
         if exp_filter:
             exps = [e for e in exps if e["name"] in exp_filter]
+        one_exp = (len(exps) == 1)   # single visible experiment → color by species
         for exp in exps:
-            for i, (col, (_, sp_name)) in enumerate(SPECIES.items()):
+            for i, (col, (sc, sp_name)) in enumerate(SPECIES.items()):
                 if col not in visible_sp:
                     continue
                 t, p10, p25, p50, p75, p90 = _percentiles(exp["results"], col)
                 if t is None:
                     continue
+                color = sc if one_exp else exp["color"]
+                label = sp_name if one_exp else f"{exp['name']} — {sp_name}"
                 n_before = len(fig.data)
-                _draw_band(fig, t, p10, p25, p50, p75, p90, exp["color"],
-                           name=f"{exp['name']} — {sp_name}",
-                           showlegend=True, show_unc=show_unc)
+                _draw_band(fig, t, p10, p25, p50, p75, p90, color,
+                           name=label, showlegend=True, show_unc=show_unc)
                 lg = f"{exp['name']}_{col}"
-                for tr in fig.data[n_before:]:       # exact slice, no index guessing
+                for tr in fig.data[n_before:]:
                     tr.legendgroup = lg
-                for tr in fig.data[n_before:-1]:     # all but the median are invisible in legend
+                for tr in fig.data[n_before:-1]:
                     tr.showlegend = False
-                fig.data[-1].line.dash = DASHES[i % len(DASHES)]
-        title = "Target Species — experiments compared"
+                if not one_exp:
+                    fig.data[-1].line.dash = DASHES[i % len(DASHES)]
+        title = ("Target Species (index, baseline = 100)" if one_exp
+                 else "Target Species — experiments compared")
 
     n_leg_rows = max(1, len(visible_sp) * (len(exps) if multi and exps else 1) // 3)
     leg_y = -0.06 - 0.07 * n_leg_rows
