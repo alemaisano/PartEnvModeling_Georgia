@@ -993,8 +993,7 @@ elif page == "📊 MCDA":
         )
         st.dataframe(
             disp.style.format({"Score": "{:.3f}",
-                               **{MCDA_CRITERIA[c]["label"]: "{:.2f}" for c in crits_in}})
-                      .background_gradient(subset=["Score"], cmap="RdYlGn"),
+                               **{MCDA_CRITERIA[c]["label"]: "{:.2f}" for c in crits_in}}),
             use_container_width=True,
         )
 
