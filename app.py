@@ -307,6 +307,74 @@ def small_chart_multi(run_results, col, title, ylabel, show_unc=True, height=200
     return fig
 
 
+def metrics_chart_multi(run_results, show_unc=True, height=660):
+    """
+    3 × 2 subplot grid for the 6 dashboard metrics.
+    Single shared legend — double-click to isolate an experiment across all panels.
+    """
+    titles = [m[1] for m in DASHBOARD_METRICS]
+    fig = make_subplots(
+        rows=3, cols=2,
+        subplot_titles=titles,
+        vertical_spacing=0.10,
+        horizontal_spacing=0.10,
+    )
+    for mi, (cname, _, ylabel) in enumerate(DASHBOARD_METRICS):
+        r, c = mi // 2 + 1, mi % 2 + 1
+        first_panel = (mi == 0)          # show legend entry only once per experiment
+        for exp in run_results:
+            t, p10, p25, p50, p75, p90 = _percentiles(exp["results"], cname)
+            if t is None:
+                continue
+            lg = exp["name"]             # legendgroup key ties all panels together
+            kw = dict(line=dict(width=0), showlegend=False,
+                      hoverinfo="skip", legendgroup=lg)
+            if show_unc:
+                fig.add_trace(go.Scatter(x=t, y=p90, **kw), row=r, col=c)
+                fig.add_trace(go.Scatter(x=t, y=p10, fill="tonexty",
+                                         fillcolor=hex_rgba(exp["color"], 0.13),
+                                         **kw), row=r, col=c)
+                fig.add_trace(go.Scatter(x=t, y=p75, **kw), row=r, col=c)
+                fig.add_trace(go.Scatter(x=t, y=p25, fill="tonexty",
+                                         fillcolor=hex_rgba(exp["color"], 0.32),
+                                         **kw), row=r, col=c)
+            fig.add_trace(go.Scatter(
+                x=t, y=p50,
+                line=dict(color=exp["color"], width=2),
+                name=exp["name"], legendgroup=lg,
+                showlegend=first_panel,
+            ), row=r, col=c)
+        # y-axis label per subplot
+        fig.update_yaxes(
+            title=dict(text=ylabel, font=dict(size=8)),
+            tickfont=dict(size=7), row=r, col=c,
+        )
+        fig.update_xaxes(
+            title=dict(text="years", font=dict(size=8)) if r == 3 else {},
+            tickfont=dict(size=7), row=r, col=c,
+        )
+    fig.update_layout(
+        height=height,
+        margin=dict(l=40, r=10, t=30, b=70),
+        paper_bgcolor="white",
+        plot_bgcolor="#f8f9fa",
+        legend=dict(
+            orientation="h", y=-0.10, x=0.5, xanchor="center",
+            font=dict(size=9),
+            itemclick="toggle", itemdoubleclick="toggleothers",
+        ),
+    )
+    # apply plot_bgcolor to all subplots
+    fig.update_layout({
+        f"plot_bgcolor": "#f8f9fa",
+        **{f"xaxis{'' if i==0 else i+1}_gridcolor": "#e5e7eb"
+           for i in range(6)},
+        **{f"yaxis{'' if i==0 else i+1}_gridcolor": "#e5e7eb"
+           for i in range(6)},
+    })
+    return fig
+
+
 def species_chart(results_or_list, *, multi=False, sp_filter=None,
                   exp_filter=None, show_unc=True, height=540):
     """
@@ -637,15 +705,6 @@ if page == "🗺 Simulate":
     sp_all = list(SPECIES.keys())
     sp_labels = {k: v[1] for k, v in SPECIES.items()}
 
-    # ── Color key (shown once, above all charts) ─────────────────────────────
-    if not single:
-        dots = " &nbsp;&nbsp; ".join(
-            f'<span style="color:{e["color"]};font-size:1.05rem">●</span>'
-            f'<span style="font-size:0.80rem;color:#374151"> {e["name"]}</span>'
-            for e in rr_filtered
-        )
-        st.markdown(dots, unsafe_allow_html=True)
-
     # ── Main chart layout ────────────────────────────────────────────────────
     col_left, col_right = st.columns([3, 2], gap="small")
 
@@ -673,9 +732,9 @@ if page == "🗺 Simulate":
 
     with col_left:
         if single:
-            for row in [DASHBOARD_METRICS[i:i+2] for i in range(0, 6, 2)]:
+            for row_pair in [DASHBOARD_METRICS[i:i+2] for i in range(0, 6, 2)]:
                 c1, c2 = st.columns(2, gap="small")
-                for widget, (cname, title, ylabel) in zip([c1, c2], row):
+                for widget, (cname, title, ylabel) in zip([c1, c2], row_pair):
                     with widget:
                         st.plotly_chart(
                             small_chart_single(exp0["results"], cname, title,
@@ -683,18 +742,13 @@ if page == "🗺 Simulate":
                             use_container_width=True, config={"displayModeBar": False},
                         )
         else:
-            for row in [DASHBOARD_METRICS[i:i+2] for i in range(0, 6, 2)]:
-                c1, c2 = st.columns(2, gap="small")
-                for widget, (cname, title, ylabel) in zip([c1, c2], row):
-                    with widget:
-                        st.plotly_chart(
-                            small_chart_multi(rr_filtered, cname, title, ylabel,
-                                             show_unc=show_unc),
-                            use_container_width=True, config={"displayModeBar": False},
-                        )
+            # Single combined subplot figure — legend supports double-click isolation
+            st.plotly_chart(
+                metrics_chart_multi(rr_filtered, show_unc=show_unc),
+                use_container_width=True, config={"displayModeBar": False},
+            )
 
-    st.caption("💡 In any chart: **double-click** a legend item to isolate it; "
-               "single-click to toggle it on/off.")
+    st.caption("💡 **Double-click** a legend item to isolate it; single-click to toggle.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -976,86 +1030,105 @@ elif page == "📊 MCDA":
                             paper_bgcolor="white")
     st.plotly_chart(fig_radar, use_container_width=True, config={"displayModeBar":False})
 
-    # ── Dirichlet weight sensitivity ──────────────────────────────────────────
+    # ── Dirichlet Monte Carlo: win frequency + global sensitivity ────────────
     st.divider()
-    st.markdown("#### Weight sensitivity (1 000 Dirichlet samples)")
-    st.caption("How often each experiment ranks #1 and #2 across randomly drawn weight vectors.")
+    st.markdown("#### Weight sensitivity — 1 000 Dirichlet samples")
+    st.caption(
+        "Random weight vectors are drawn from a Dirichlet distribution (all criteria equally likely). "
+        "**Win frequency**: how often each experiment ranks #1. "
+        "**Global sensitivity** (Spearman ρ): rank correlation between each criterion's sampled weight "
+        "and each experiment's score — shows which criteria drive the ranking."
+    )
 
     nc = len(crits_in)
-    win_cnt:  dict[str, int] = {exp["name"]: 0 for exp in rr}
-    sec_cnt:  dict[str, int] = {exp["name"]: 0 for exp in rr}
     rng_s = np.random.default_rng(42)
+    N_MC = 1000
 
-    for _ in range(1000):
-        rw = dict(zip(crits_in, rng_s.dirichlet(np.ones(nc)) * 100))
-        tw = sum(rw.values())
-        scores_s = {exp["name"]: sum(float(df_norm.loc[exp["name"], c]) * rw[c] / tw
-                                     for c in crits_in)
-                    for exp in rr if exp["name"] in df_norm.index}
-        ranked = sorted(scores_s, key=scores_s.get, reverse=True)
-        if ranked: win_cnt[ranked[0]] += 1
+    # accumulate per-sample weights and scores
+    mc_w_arr  = np.zeros((N_MC, nc))          # shape (N_MC, n_criteria)
+    mc_sc_arr = np.zeros((N_MC, len(rr)))     # shape (N_MC, n_experiments)
+    win_cnt   = {exp["name"]: 0 for exp in rr}
+    sec_cnt   = {exp["name"]: 0 for exp in rr}
+    exp_names = [exp["name"] for exp in rr]
+
+    for s in range(N_MC):
+        raw_w = rng_s.dirichlet(np.ones(nc))
+        mc_w_arr[s] = raw_w
+        tw = raw_w.sum()
+        row_scores: dict[str, float] = {}
+        for ei, exp in enumerate(rr):
+            if exp["name"] not in df_norm.index:
+                continue
+            sc = sum(float(df_norm.loc[exp["name"], c]) * raw_w[ci]
+                     for ci, c in enumerate(crits_in)) / tw
+            mc_sc_arr[s, ei] = sc
+            row_scores[exp["name"]] = sc
+        ranked = sorted(row_scores, key=row_scores.get, reverse=True)
+        if ranked:          win_cnt[ranked[0]] += 1
         if len(ranked) > 1: sec_cnt[ranked[1]] += 1
 
-    pct_win = {k: v/10 for k, v in win_cnt.items()}
-    pct_sec = {k: v/10 for k, v in sec_cnt.items()}
+    pct_win = {k: v / 10 for k, v in win_cnt.items()}
+    pct_sec = {k: v / 10 for k, v in sec_cnt.items()}
 
+    # ── Win-frequency bars ────────────────────────────────────────────────────
     c_w1, c_w2 = st.columns(2, gap="medium")
-    for col, pct, label in [(c_w1, pct_win, "Wins #1 (%)"), (c_w2, pct_sec, "Ranks #2 (%)")]:
-        with col:
+    for col_w, pct, label in [(c_w1, pct_win, "Wins #1 (%)"),
+                               (c_w2, pct_sec, "Ranks #2 (%)")]:
+        with col_w:
             fig_w = go.Figure(go.Bar(
                 x=list(pct.keys()), y=list(pct.values()),
-                marker_color=[exp_colors.get(n,"#888") for n in pct],
+                marker_color=[exp_colors.get(n, "#888") for n in pct],
                 text=[f"{v:.0f}%" for v in pct.values()], textposition="outside",
             ))
             fig_w.update_layout(
                 title=dict(text=label, font=dict(size=11), x=0.5, xanchor="center"),
-                height=300, margin=dict(l=10,r=10,t=36,b=10),
-                yaxis=dict(title="%", range=[0,115]),
+                height=300, margin=dict(l=10, r=10, t=36, b=10),
+                yaxis=dict(title="%", range=[0, 115]),
                 paper_bgcolor="white", plot_bgcolor="#f8f9fa",
             )
-            st.plotly_chart(fig_w, use_container_width=True, config={"displayModeBar":False})
+            st.plotly_chart(fig_w, use_container_width=True,
+                            config={"displayModeBar": False})
 
-    # ── One-at-a-time sensitivity ─────────────────────────────────────────────
-    st.markdown("#### One-at-a-time weight sensitivity")
-    st.caption("Score of each experiment as one criterion's weight varies 0→100 (others held equal).")
+    # ── Global sensitivity: Spearman rank correlation ─────────────────────────
+    st.markdown("#### Global sensitivity — Spearman rank correlation")
+    st.caption(
+        "Each cell is the Spearman ρ between a criterion's weight (across 1 000 random draws) "
+        "and that experiment's score. **Red** = higher weight → higher score (experiment favoured by "
+        "this criterion). **Blue** = higher weight → lower score. Magnitude = sensitivity strength."
+    )
 
-    ota_crits = [c for c in crits_in if weights.get(c, 0) > 0]
-    sweep = np.linspace(0, 100, 41)
-    ncols = min(len(ota_crits), 3)
-    ota_cols = st.columns(ncols)
+    def _spearman(x: np.ndarray, y: np.ndarray) -> float:
+        """Rank-based correlation without scipy."""
+        n = len(x)
+        rx = np.argsort(np.argsort(x)).astype(float)
+        ry = np.argsort(np.argsort(y)).astype(float)
+        d2 = ((rx - ry) ** 2).sum()
+        return float(1 - 6 * d2 / (n * (n ** 2 - 1)))
 
-    for i_c, crit in enumerate(ota_crits[:6]):
-        with ota_cols[i_c % ncols]:
-            fig_ota = go.Figure()
-            tw_others = sum(v for k, v in weights.items() if k != crit and k in crits_in)
-            for exp in rr:
-                if exp["name"] not in df_norm.index:
-                    continue
-                ys = []
-                for w_focal in sweep:
-                    tw_total = w_focal + tw_others
-                    if tw_total == 0:
-                        ys.append(0.0)
-                        continue
-                    score = sum(
-                        float(df_norm.loc[exp["name"], c2]) *
-                        (w_focal if c2 == crit else weights.get(c2, 0)) / tw_total
-                        for c2 in crits_in
-                    )
-                    ys.append(score)
-                fig_ota.add_trace(go.Scatter(
-                    x=sweep, y=ys,
-                    line=dict(color=exp["color"], width=2),
-                    name=exp["name"], showlegend=(i_c == 0),
-                ))
-            fig_ota.update_layout(
-                title=dict(text=MCDA_CRITERIA[crit]["label"], font=dict(size=10),
-                           x=0.5, xanchor="center"),
-                height=210, margin=dict(l=28,r=4,t=26,b=28),
-                xaxis=dict(title="weight", tickfont=dict(size=8)),
-                yaxis=dict(title="score", tickfont=dict(size=8), range=[0,1]),
-                paper_bgcolor="white", plot_bgcolor="#f8f9fa",
-                showlegend=(i_c == 0),
-                legend=dict(font=dict(size=8)),
-            )
-            st.plotly_chart(fig_ota, use_container_width=True, config={"displayModeBar":False})
+    corr_matrix = np.zeros((len(crits_in), len(exp_names)))
+    for ci, crit in enumerate(crits_in):
+        for ei, exp_name in enumerate(exp_names):
+            corr_matrix[ci, ei] = _spearman(mc_w_arr[:, ci], mc_sc_arr[:, ei])
+
+    crit_short = [MCDA_CRITERIA[c]["label"] for c in crits_in]
+
+    fig_heat = go.Figure(go.Heatmap(
+        z=corr_matrix,
+        x=exp_names,
+        y=crit_short,
+        colorscale="RdBu",
+        zmid=0, zmin=-1, zmax=1,
+        text=[[f"{v:.2f}" for v in row] for row in corr_matrix],
+        texttemplate="%{text}",
+        textfont=dict(size=10),
+        colorbar=dict(title="Spearman ρ", tickfont=dict(size=9)),
+    ))
+    fig_heat.update_layout(
+        height=40 + 38 * len(crits_in),
+        margin=dict(l=180, r=10, t=20, b=80),
+        xaxis=dict(tickangle=-30, tickfont=dict(size=9)),
+        yaxis=dict(tickfont=dict(size=9), autorange="reversed"),
+        paper_bgcolor="white",
+    )
+    st.plotly_chart(fig_heat, use_container_width=True,
+                    config={"displayModeBar": False})
