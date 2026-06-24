@@ -1092,49 +1092,104 @@ elif page == "📊 MCDA":
             st.plotly_chart(fig_w, use_container_width=True,
                             config={"displayModeBar": False})
 
-    # ── Criterion-level scores (small multiples) ──────────────────────────────
+    # ── Score profile per criterion (parallel-coordinates style) ──────────────
     st.divider()
-    st.markdown("#### Score per criterion")
-    st.caption("Normalised score (0–1) of each scenario on every active criterion.")
+    st.markdown("#### Score profile per criterion")
+    _unc_pc = st.checkbox("Show uncertainty bands", value=True, key="mcda_unc_pc")
+    st.caption(
+        "Each line is a scenario's normalised score (0 = worst, 1 = best) across "
+        "active criteria. Bands show 10–90 % (light) and 25–75 % (dark) of MC run "
+        "outcomes, normalised with the same min-max bounds as the median."
+    )
 
-    _nc = len(crits_in)
-    _ncols = min(3, _nc)
-    _nrows = (_nc + _ncols - 1) // _ncols
     _crit_labels = [MCDA_CRITERIA[c]["label"] for c in crits_in]
 
-    fig_sm = make_subplots(
-        rows=_nrows, cols=_ncols,
-        subplot_titles=_crit_labels,
-        horizontal_spacing=0.06,
-        vertical_spacing=0.18,
-    )
-    for _i, _crit in enumerate(crits_in):
-        _r, _c = divmod(_i, _ncols)
-        for exp in rr:
-            if exp["name"] not in df_norm.index:
-                continue
-            _val = float(df_norm.loc[exp["name"], _crit])
-            fig_sm.add_trace(go.Bar(
-                x=[exp["name"]], y=[_val],
-                marker_color=exp["color"],
-                name=exp["name"],
-                showlegend=(_i == 0),
-                legendgroup=exp["name"],
-            ), row=_r + 1, col=_c + 1)
+    # per-criterion normalization bounds (same as df_norm, derived from df_raw)
+    _bounds: dict[str, tuple] = {}   # crit → (vmin, vmax, dir)
+    for _crit in crits_in:
+        _meta = MCDA_CRITERIA[_crit]
+        _col_vals = df_raw[_crit].dropna()
+        _vmin = float(_col_vals.min()) if len(_col_vals) else 0.0
+        _vmax = float(_col_vals.max()) if len(_col_vals) else 1.0
+        _bounds[_crit] = (_vmin, _vmax, _meta["dir"])
 
-    fig_sm.update_yaxes(range=[0, 1], tickfont=dict(size=8))
-    fig_sm.update_xaxes(tickfont=dict(size=7), tickangle=-30)
-    fig_sm.update_layout(
-        height=180 + 180 * _nrows,
-        barmode="group",
-        margin=dict(l=10, r=10, t=40, b=10),
-        paper_bgcolor="white",
-        plot_bgcolor="#f8f9fa",
+    def _norm_clip(v, vmin, vmax, d):
+        if vmax == vmin:
+            return 0.5
+        s = (v - vmin) / (vmax - vmin)
+        return float(np.clip(s if d == 1 else 1 - s, 0.0, 1.0))
+
+    fig_pc = go.Figure()
+    _shown = set()
+
+    for exp in rr:
+        if exp["name"] not in df_norm.index:
+            continue
+        # collect final-tick percentile scores per criterion
+        _p10s, _p25s, _p50s, _p75s, _p90s = [], [], [], [], []
+        for _crit in crits_in:
+            _vmin, _vmax, _dir = _bounds[_crit]
+            _ts, _a, _b, _m, _c2, _d = _percentiles(exp["results"], _crit)
+            if _ts is None:
+                for _lst in (_p10s, _p25s, _p50s, _p75s, _p90s):
+                    _lst.append(None)
+                continue
+            # direction flip means p10/p90 swap their role — take outer envelope
+            _n10 = _norm_clip(float(_a[-1]), _vmin, _vmax, _dir)
+            _n25 = _norm_clip(float(_b[-1]), _vmin, _vmax, _dir)
+            _n50 = _norm_clip(float(_m[-1]), _vmin, _vmax, _dir)
+            _n75 = _norm_clip(float(_c2[-1]), _vmin, _vmax, _dir)
+            _n90 = _norm_clip(float(_d[-1]), _vmin, _vmax, _dir)
+            _p10s.append(min(_n10, _n90))   # outer low (handles dir flip)
+            _p25s.append(min(_n25, _n75))   # inner low
+            _p50s.append(_n50)
+            _p75s.append(max(_n25, _n75))   # inner high
+            _p90s.append(max(_n10, _n90))   # outer high
+
+        _lg = exp["name"]
+        _show1st = _lg not in _shown
+        _shown.add(_lg)
+        _kw0 = dict(legendgroup=_lg, showlegend=False,
+                    mode="lines", hoverinfo="skip", line=dict(width=0))
+
+        if _unc_pc:
+            # outer band p10-p90
+            fig_pc.add_trace(go.Scatter(
+                x=_crit_labels, y=_p90s, **_kw0))
+            fig_pc.add_trace(go.Scatter(
+                x=_crit_labels, y=_p10s,
+                fill="tonexty", fillcolor=hex_rgba(exp["color"], 0.13),
+                **_kw0))
+            # inner band p25-p75
+            fig_pc.add_trace(go.Scatter(
+                x=_crit_labels, y=_p75s, **_kw0))
+            fig_pc.add_trace(go.Scatter(
+                x=_crit_labels, y=_p25s,
+                fill="tonexty", fillcolor=hex_rgba(exp["color"], 0.32),
+                **_kw0))
+
+        # median line
+        fig_pc.add_trace(go.Scatter(
+            x=_crit_labels, y=_p50s,
+            mode="lines+markers",
+            line=dict(color=exp["color"], width=2),
+            marker=dict(size=6, color=exp["color"]),
+            name=exp["name"], legendgroup=_lg,
+            showlegend=_show1st,
+        ))
+
+    fig_pc.update_layout(
+        height=360,
+        margin=dict(l=40, r=10, t=10, b=90),
+        yaxis=dict(range=[0, 1], title="score (0–1)",
+                   tickfont=dict(size=9), gridcolor="#e0e0e0"),
+        xaxis=dict(tickangle=-30, tickfont=dict(size=9), gridcolor="#e0e0e0"),
+        paper_bgcolor="white", plot_bgcolor="#f8f9fa",
         legend=dict(font=dict(size=9), orientation="h",
-                    yanchor="bottom", y=1.04, xanchor="left", x=0),
-        showlegend=True,
+                    yanchor="bottom", y=1.02, xanchor="left", x=0),
+        itemclick="toggle", itemdoubleclick="toggleothers",
     )
-    st.plotly_chart(fig_sm, use_container_width=True,
+    st.plotly_chart(fig_pc, use_container_width=True,
                     config={"displayModeBar": False})
 
     # ── Bump chart: ranking across criteria ───────────────────────────────────
