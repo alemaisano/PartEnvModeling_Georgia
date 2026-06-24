@@ -35,12 +35,35 @@ except ImportError:
 # ── NetLogo home resolution (Linux / Streamlit Cloud) ────────────────────────
 _NL_VERSION   = "7.0.3"
 _NL_TARBALL   = f"NetLogo-{_NL_VERSION}-64.tgz"
-_NL_URL       = (
-    os.environ.get("NETLOGO_DOWNLOAD_URL")
-    or f"https://ccl.northwestern.edu/netlogo/{_NL_VERSION}/{_NL_TARBALL}"
-)
 _NL_CACHE_DIR = Path(os.environ.get("NETLOGO_CACHE_DIR", "/tmp/netlogo_install"))
-_NL_EXTRACTED = _NL_CACHE_DIR / f"NetLogo {_NL_VERSION}"
+
+# Download URL candidates (tried in order).  User can override the first slot
+# by setting NETLOGO_DOWNLOAD_URL in Streamlit secrets.
+_NL_URLS = [
+    u for u in [
+        os.environ.get("NETLOGO_DOWNLOAD_URL"),
+        f"https://github.com/NetLogo/NetLogo/releases/download/{_NL_VERSION}/{_NL_TARBALL}",
+        f"https://ccl.northwestern.edu/netlogo/{_NL_VERSION}/{_NL_TARBALL}",
+    ] if u
+]
+
+_HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
+
+
+def _download(url: str, dest: Path) -> None:
+    req = urllib.request.Request(url, headers=_HEADERS)
+    with urllib.request.urlopen(req, timeout=120) as resp, open(dest, "wb") as f:
+        f.write(resp.read())
+
+
+def _find_extracted(cache_dir: Path) -> str | None:
+    """Return the first subdirectory that looks like a NetLogo installation."""
+    for d in sorted(cache_dir.iterdir()):
+        if d.is_dir() and "netlogo" in d.name.lower():
+            # Verify it actually contains the NetLogo jar
+            if any(d.rglob("netlogo*.jar")):
+                return str(d)
+    return None
 
 
 def _ensure_netlogo_home() -> str | None:
@@ -48,48 +71,64 @@ def _ensure_netlogo_home() -> str | None:
     Return the NetLogo installation directory for pyNetLogo.
 
     Priority:
-      1. NETLOGO_HOME env var (user-supplied, fastest)
-      2. Already-extracted cache in /tmp  (warm Streamlit container)
-      3. Download + extract from CCL servers (cold start, once per container)
-      4. None  → pyNetLogo auto-detects (works on Windows)
+      1. NETLOGO_HOME env var (fastest; set in Streamlit secrets)
+      2. Common Linux install paths or already-extracted /tmp cache
+      3. Download tarball from GitHub / CCL (once per container cold-start)
+    On Windows returns None so pyNetLogo auto-detects from the registry.
     """
     if sys.platform == "win32":
-        return None  # pyNetLogo reads Windows registry automatically
+        return None
 
     # 1. Explicit env var
     env_home = os.environ.get("NETLOGO_HOME", "")
     if env_home and Path(env_home).exists():
         return env_home
 
-    # 2. Common Linux install paths
-    candidates = [
-        _NL_EXTRACTED,
-        Path("/usr/local/netlogo"),
-        Path("/opt/netlogo"),
-        Path.home() / "netlogo",
-    ]
-    for c in candidates:
+    # 2. Common paths + previously extracted cache
+    static = [Path("/usr/local/netlogo"), Path("/opt/netlogo"), Path.home() / "netlogo"]
+    for c in static:
         if c.exists():
             return str(c)
 
-    # 3. Download from CCL (Streamlit Cloud cold start)
+    if _NL_CACHE_DIR.exists():
+        found = _find_extracted(_NL_CACHE_DIR)
+        if found:
+            return found
+
+    # 3. Download and extract
     _NL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     tarball = _NL_CACHE_DIR / _NL_TARBALL
+
     if not tarball.exists():
-        print(f"[netlogo_runner] downloading NetLogo {_NL_VERSION} …", flush=True)
-        urllib.request.urlretrieve(_NL_URL, tarball)
-    if not _NL_EXTRACTED.exists():
-        print(f"[netlogo_runner] extracting {tarball} …", flush=True)
+        last_err: Exception | None = None
+        for url in _NL_URLS:
+            try:
+                print(f"[netlogo_runner] downloading from {url} …", flush=True)
+                _download(url, tarball)
+                break
+            except Exception as exc:
+                print(f"[netlogo_runner]   ↳ failed: {exc}", flush=True)
+                last_err = exc
+                tarball.unlink(missing_ok=True)
+        else:
+            raise RuntimeError(
+                f"Could not download NetLogo {_NL_VERSION}. Last error: {last_err}\n"
+                "Set NETLOGO_DOWNLOAD_URL in Streamlit secrets to a direct .tgz link, "
+                "or set NETLOGO_HOME to an already-extracted NetLogo directory."
+            )
+
+    if tarball.exists():
+        print(f"[netlogo_runner] extracting …", flush=True)
         with tarfile.open(tarball, "r:gz") as tf:
             tf.extractall(_NL_CACHE_DIR)
-    if _NL_EXTRACTED.exists():
-        return str(_NL_EXTRACTED)
+
+    found = _find_extracted(_NL_CACHE_DIR)
+    if found:
+        return found
 
     raise RuntimeError(
-        f"Could not locate NetLogo {_NL_VERSION}. "
-        "Set the NETLOGO_HOME environment variable to the NetLogo installation directory, "
-        "or set NETLOGO_DOWNLOAD_URL to a reachable download URL. "
-        "On Streamlit Cloud add these in App settings → Secrets."
+        f"Extracted NetLogo tarball but could not locate the installation directory "
+        f"under {_NL_CACHE_DIR}. Set NETLOGO_HOME explicitly in Streamlit secrets."
     )
 
 # ── Reporter map: Python key → NetLogo reporter name ────────────────────────
