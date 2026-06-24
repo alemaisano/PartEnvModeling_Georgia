@@ -42,7 +42,7 @@ _NL_CACHE_DIR = Path(os.environ.get("NETLOGO_CACHE_DIR", "/tmp/netlogo_install")
 _NL_URLS = [
     u for u in [
         os.environ.get("NETLOGO_DOWNLOAD_URL"),
-        f"https://github.com/NetLogo/NetLogo/releases/download/{_NL_VERSION}/{_NL_TARBALL}",
+        f"https://downloads.netlogo.org/{_NL_VERSION}/{_NL_TARBALL}",
         f"https://ccl.northwestern.edu/netlogo/{_NL_VERSION}/{_NL_TARBALL}",
     ] if u
 ]
