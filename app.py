@@ -1190,8 +1190,8 @@ elif page == "📊 MCDA":
         xaxis=dict(tickangle=-30, tickfont=dict(size=9), gridcolor="#e0e0e0"),
         paper_bgcolor="white", plot_bgcolor="#f8f9fa",
         legend=dict(font=dict(size=9), orientation="h",
-                    yanchor="bottom", y=1.02, xanchor="left", x=0),
-        itemclick="toggle", itemdoubleclick="toggleothers",
+                    yanchor="bottom", y=1.02, xanchor="left", x=0,
+                    itemclick="toggle", itemdoubleclick="toggleothers"),
     )
     st.plotly_chart(fig_pc, use_container_width=True,
                     config=_PCFG)
