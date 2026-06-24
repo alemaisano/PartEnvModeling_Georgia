@@ -117,6 +117,7 @@ def _set_params(nl, params: dict) -> list[str]:
 def run_simulation(
     model_path: str,
     params: dict,
+    post_setup: dict | None = None,   # globals to override AFTER setup() (K, r, pop values)
     n_ticks: int = 30,
     gui: bool = False,
     seed: int | None = None,
@@ -161,6 +162,8 @@ def run_simulation(
 
         warnings += _set_params(nl, params)
         nl.command("setup")
+        if post_setup:
+            warnings += _set_params(nl, post_setup)
 
         # Detect which reporters are actually available
         available = {}
