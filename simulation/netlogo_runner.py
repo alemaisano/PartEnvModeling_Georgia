@@ -26,6 +26,14 @@ if sys.platform == "win32" and Path(_TEMURIN).exists():
     if _bin not in os.environ.get("PATH", ""):
         os.environ["PATH"] = _bin + os.pathsep + os.environ.get("PATH", "")
 
+# ── Linux/headless: suppress AWT before the JVM starts ───────────────────────
+if sys.platform != "win32":
+    # JAVA_TOOL_OPTIONS is read by the JVM at startup before any Java code runs.
+    # This prevents java.awt.HeadlessException on servers with no X display.
+    _jto = os.environ.get("JAVA_TOOL_OPTIONS", "")
+    if "-Djava.awt.headless=true" not in _jto:
+        os.environ["JAVA_TOOL_OPTIONS"] = (_jto + " -Djava.awt.headless=true").strip()
+
 try:
     import pynetlogo
     PYNETLOGO_AVAILABLE = True
