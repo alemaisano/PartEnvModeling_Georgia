@@ -3,6 +3,8 @@
 Participatory simulation app built around the **NetLogo Corridor Governance Model v6**
 (`Nlogo_final_model.nlogox`).
 
+Access the streamlit app: https://partenvmodgeorgia.streamlit.app/
+
 ---
 
 ## Quick Start
