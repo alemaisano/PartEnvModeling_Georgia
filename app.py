@@ -973,7 +973,34 @@ elif page == "📊 MCDA":
 
     # ── Weight controls ───────────────────────────────────────────────────────
     st.markdown("#### Criterion weights")
-    st.caption("Weighted-sum of min-max normalised final-tick median values.")
+    st.caption(
+        "Weighted-sum of min-max normalised final-tick median values. "
+        "Weights auto-renormalize to sum to 100 when any value changes."
+    )
+
+    def _make_weight_cb(changed_crit: str):
+        def _cb():
+            new_val = max(0, min(100, int(st.session_state[f"w_{changed_crit}"])))
+            remaining = 100 - new_val
+            others = [c for c in MCDA_CRITERIA if c != changed_crit]
+            old_sum = sum(int(st.session_state.mcda_w.get(c, MCDA_CRITERIA[c]["w"]))
+                          for c in others)
+            if old_sum > 0:
+                new_o = {c: round(remaining * st.session_state.mcda_w.get(c, MCDA_CRITERIA[c]["w"])
+                                  / old_sum) for c in others}
+            else:
+                per = remaining // len(others) if others else 0
+                new_o = {c: per for c in others}
+            # fix integer-rounding so total == 100 exactly
+            tot = new_val + sum(new_o.values())
+            if tot != 100 and others:
+                new_o[others[-1]] = max(0, new_o[others[-1]] + (100 - tot))
+            st.session_state.mcda_w[changed_crit] = new_val
+            for c, v in new_o.items():
+                st.session_state.mcda_w[c] = v
+                st.session_state[f"w_{c}"] = v
+        return _cb
+
     w_cols = st.columns(len(MCDA_CRITERIA))
     weights: dict[str, float] = {}
     for col_w, (crit, meta) in zip(w_cols, MCDA_CRITERIA.items()):
@@ -982,12 +1009,16 @@ elif page == "📊 MCDA":
                 meta["label"], min_value=0, max_value=100,
                 value=int(st.session_state.mcda_w[crit]), step=5,
                 key=f"w_{crit}",
+                on_change=_make_weight_cb(crit),
                 help="Higher = better" if meta["dir"] == 1 else "Lower = better",
             )
             weights[crit] = float(w)
             st.session_state.mcda_w[crit] = w
 
     total_w = sum(weights.values()) or 1.0
+    _tw_int = int(round(total_w))
+    if _tw_int != 100:
+        st.caption(f"⚠ Weights currently sum to {_tw_int} — will be normalised internally.")
 
     # ── Normalise & score ─────────────────────────────────────────────────────
     df_norm = df_raw.copy()
@@ -1268,3 +1299,89 @@ elif page == "📊 MCDA":
     )
     st.plotly_chart(fig_bump, use_container_width=True,
                     config=_PCFG)
+
+    # ── Weight sensitivity: score profile sweeping each criterion's weight ─────
+    st.divider()
+    st.markdown("#### Score sensitivity to individual weights")
+    st.caption(
+        "Each panel sweeps one criterion's weight from 0 % to 100 %, distributing "
+        "the remaining budget proportionally among all other active criteria. "
+        "Lines show the aggregate score for each experiment. "
+        "The **black vertical line** marks the current weight setting."
+    )
+
+    _w_total_ws = sum(weights[c] for c in crits_in) or 1.0
+    _wf = {c: weights[c] / _w_total_ws for c in crits_in}   # normalized fractions
+
+    _NC = len(crits_in)
+    _NCOLS = 3
+    _NROWS = (_NC + _NCOLS - 1) // _NCOLS
+    _x_sweep = np.linspace(0.0, 1.0, 61)
+
+    _fig_ws = make_subplots(
+        rows=_NROWS, cols=_NCOLS,
+        subplot_titles=[MCDA_CRITERIA[c]["label"] for c in crits_in],
+        shared_yaxes=True,
+        vertical_spacing=0.18,
+        horizontal_spacing=0.05,
+    )
+
+    _seen_ws: set = set()
+    for _ki, _ck in enumerate(crits_in):
+        _r = _ki // _NCOLS + 1
+        _c = _ki % _NCOLS + 1
+        _oth = [c for c in crits_in if c != _ck]
+        _oth_sum = sum(_wf[c] for c in _oth)
+
+        for exp in rr:
+            if exp["name"] not in df_norm.index:
+                continue
+            _ys = []
+            for _xk in _x_sweep:
+                _rem = 1.0 - _xk
+                if _oth_sum > 0 and _oth:
+                    _eff = {c: _rem * _wf[c] / _oth_sum for c in _oth}
+                else:
+                    _eff = {c: _rem / len(_oth) if _oth else 0.0 for c in _oth}
+                _eff[_ck] = _xk
+                _ys.append(sum(float(df_norm.loc[exp["name"], cc]) * _eff.get(cc, 0.0)
+                               for cc in crits_in))
+
+            _lg_ws = exp["name"]
+            _fig_ws.add_trace(go.Scatter(
+                x=_x_sweep, y=_ys,
+                mode="lines",
+                line=dict(color=exp["color"], width=1.8),
+                name=exp["name"], legendgroup=_lg_ws,
+                showlegend=(_lg_ws not in _seen_ws),
+            ), row=_r, col=_c)
+            _seen_ws.add(_lg_ws)
+
+        # vertical line at current weight
+        _fig_ws.add_vline(
+            x=_wf.get(_ck, 0.0), line_color="#111",
+            line_width=1.5, line_dash="solid",
+            row=_r, col=_c,
+        )
+        _fig_ws.update_xaxes(
+            tickfont=dict(size=7), range=[0, 1],
+            title=dict(text="weight fraction", font=dict(size=7)) if _r == _NROWS else {},
+            row=_r, col=_c,
+        )
+        _fig_ws.update_yaxes(
+            tickfont=dict(size=7), range=[0, 1],
+            title=dict(text="score", font=dict(size=7)) if _c == 1 else {},
+            row=_r, col=_c,
+        )
+
+    _fig_ws.update_layout(
+        height=max(300, _NROWS * 210),
+        margin=dict(l=40, r=10, t=30, b=70),
+        paper_bgcolor="white", plot_bgcolor="#f8f9fa",
+        legend=dict(
+            font=dict(size=9), orientation="h",
+            yanchor="bottom", y=1.02, xanchor="left", x=0,
+            itemclick="toggle", itemdoubleclick="toggleothers",
+        ),
+    )
+    st.plotly_chart(_fig_ws, use_container_width=True, config=_PCFG)
