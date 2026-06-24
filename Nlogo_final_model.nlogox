@@ -80,6 +80,22 @@ globals [
   ;; Agreement duration tracking
   agreement-year-start
   agreement-active?
+
+  ;; Agent behaviour parameters (set before setup by pyNetLogo)
+  wta-mean wta-sd
+  ptl-mean ptl-sd
+  opp-mean opp-sd
+
+  ;; Income model coefficients (set in setup; overridable via post-setup)
+  income-investor-boost
+  income-edu-boost
+  income-market-boost
+  income-selfsustain
+  income-marginal-loss
+  income-action-bonus
+  income-merge-max
+  income-predator-coef
+  income-s3-penalty
 ]
 
 ;; ---------------------------------------------------------------
@@ -131,6 +147,26 @@ to setup
   set community-income-index 100
 
   apply-scenario-setup
+
+  ;; Income coefficient defaults (override via post-setup for uncertainty)
+  set income-investor-boost 3.0
+  set income-edu-boost      0.5
+  set income-market-boost   0.3
+  set income-selfsustain    1.5
+  set income-marginal-loss  1.0
+  set income-action-bonus   0.8
+  set income-merge-max      5.0
+  set income-predator-coef  1.5
+  set income-s3-penalty     5.0
+
+  ;; Agent behaviour defaults (only if not already set by pyNetLogo pre-setup)
+  if wta-mean = 0 [ set wta-mean 0.45 ]
+  if wta-sd   = 0 [ set wta-sd   0.20 ]
+  if ptl-mean = 0 [ set ptl-mean 0.08 ]
+  if ptl-sd   = 0 [ set ptl-sd   0.05 ]
+  if opp-mean = 0 [ set opp-mean 0.20 ]
+  if opp-sd   = 0 [ set opp-sd   0.08 ]
+
   create-humans 300 [ initialise-human ]
   reset-ticks
 end
@@ -181,10 +217,10 @@ end
 ;; ---------------------------------------------------------------
 to initialise-human
   set is-active? (random-float 1.0 < 0.80)
-  set willingness-to-accept clamp01 (random-normal 0.45 0.20)
-  set prob-to-leave clamp01 (random-normal 0.08 0.05)
+  set willingness-to-accept clamp01 (random-normal wta-mean wta-sd)
+  set prob-to-leave clamp01 (random-normal ptl-mean ptl-sd)
   set income-growth          100
-  set opportunity-perception clamp01 (random-normal 0.20 0.08)
+  set opportunity-perception clamp01 (random-normal opp-mean opp-sd)
   set predator-damage-experienced 0
 
   set action-reduce-hunting     0
@@ -583,19 +619,19 @@ to update-income
 
   ;; POSITIVE
   let merge-boost (ifelse-value
-    merge-lvl >= 2.5 [ 5.0 ]
+    merge-lvl >= 2.5 [ income-merge-max ]
     merge-lvl >= 1.5 [ 2.5 ]
     merge-lvl >= 0.5 [ 0.5 ]
     [ 0 ])
 
-  let investor-boost     (ifelse-value (investor-active? and scenario = 2)            [ 3.0 ] [ 0 ])
-  let edu-boost          (ifelse-value (agreement-education?          and scenario = 2) [ 0.5 ] [ 0 ])
-  let market-boost       (ifelse-value (agreement-market-access?      and scenario = 2) [ 0.3 ] [ 0 ])
-  let selfsustain-boost  (ifelse-value (agreement-selfsustain-incentive? and scenario = 2) [ 1.5 ] [ 0 ])
+  let investor-boost     (ifelse-value (investor-active? and scenario = 2)            [ income-investor-boost ] [ 0 ])
+  let edu-boost          (ifelse-value (agreement-education?          and scenario = 2) [ income-edu-boost ] [ 0 ])
+  let market-boost       (ifelse-value (agreement-market-access?      and scenario = 2) [ income-market-boost ] [ 0 ])
+  let selfsustain-boost  (ifelse-value (agreement-selfsustain-incentive? and scenario = 2) [ income-selfsustain ] [ 0 ])
   ;; Marginal loss incentive: direct cash transfer for foregone income
-  let marginal-loss-comp (ifelse-value (agreement-marginal-loss-incentive? and scenario = 2) [ 1.0 ] [ 0 ])
+  let marginal-loss-comp (ifelse-value (agreement-marginal-loss-incentive? and scenario = 2) [ income-marginal-loss ] [ 0 ])
   ;; Action count incentive: bonus per action taken
-  let action-bonus (ifelse-value (agreement-action-incentive? and scenario = 2) [ 0.8 ] [ 0 ])
+  let action-bonus (ifelse-value (agreement-action-incentive? and scenario = 2) [ income-action-bonus ] [ 0 ])
 
   let patrol-income (ifelse-value
     patrol-lvl >= 2.5 [ 1.5 ]
@@ -638,12 +674,12 @@ to update-income
   ;; Predator damage cost (uncompensated bear attacks on livestock)
   let predator-cost (ifelse-value
     (not agreement-predator-compensation? and scenario = 2 and pop-bear > raw-start-bear)
-    [ (pop-bear - raw-start-bear) / raw-start-bear * 1.5 ]
+    [ (pop-bear - raw-start-bear) / raw-start-bear * income-predator-coef ]
     [ 0 ])
 
   ;; SCENARIO PENALTY
   let scenario-penalty (ifelse-value
-    scenario = 3 [ -5.0 ]
+    scenario = 3 [ (- income-s3-penalty) ]
     scenario = 4 [ 2.0 ]
     [ 0 ])
 

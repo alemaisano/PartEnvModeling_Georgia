@@ -110,55 +110,56 @@ S2_PRESETS: dict[str, dict[str, bool]] = {
 # Colour palette for S2 variants (cycled)
 S2_PALETTE = ["#f59e0b","#3b82f6","#8b5cf6","#22c55e","#f97316","#6366f1","#ec4899","#14b8a6","#a16207","#1d4ed8"]
 
-# ── Ecological parameters ─────────────────────────────────────────────────────
+# ── Ecological parameters (applied as post_setup after NetLogo setup()) ────────
 ECO_PARAMS: dict[str, dict] = {
     "r-deer":       {"label":"Deer growth rate (r)",        "group":"Growth rates",        "default":0.11, "lo":0.02,"hi":0.30,"step":0.005,"fmt":"%.3f"},
     "r-chamois":    {"label":"Chamois growth rate (r)",     "group":"Growth rates",        "default":0.10, "lo":0.02,"hi":0.30,"step":0.005,"fmt":"%.3f"},
     "r-bear":       {"label":"Bear growth rate (r)",        "group":"Growth rates",        "default":0.05, "lo":0.01,"hi":0.15,"step":0.005,"fmt":"%.3f"},
     "r-broadleaf":  {"label":"Broadleaf growth rate (r)",   "group":"Growth rates",        "default":0.03, "lo":0.01,"hi":0.10,"step":0.005,"fmt":"%.3f"},
     "r-nontarget":  {"label":"Non-target growth rate (r)",  "group":"Growth rates",        "default":0.06, "lo":0.01,"hi":0.15,"step":0.005,"fmt":"%.3f"},
-    "K-deer":       {"label":"Deer carrying capacity (K)",  "group":"Carrying capacities", "default":1200, "lo":400, "hi":3000,"step":50,   "fmt":"%d"},
-    "K-chamois":    {"label":"Chamois carrying cap. (K)",   "group":"Carrying capacities", "default":600,  "lo":200, "hi":1500,"step":50,   "fmt":"%d"},
-    "K-bear":       {"label":"Bear carrying cap. (K)",      "group":"Carrying capacities", "default":120,  "lo":40,  "hi":300, "step":5,    "fmt":"%d"},
-    "K-broadleaf":  {"label":"Broadleaf carrying cap. (K)", "group":"Carrying capacities", "default":200,  "lo":80,  "hi":500, "step":10,   "fmt":"%d"},
-    "K-nontarget":  {"label":"Non-target carrying cap. (K)","group":"Carrying capacities", "default":200,  "lo":80,  "hi":500, "step":10,   "fmt":"%d"},
-    "pop-deer":     {"label":"Initial deer population",     "group":"Initial populations", "default":400,  "lo":100, "hi":800, "step":10,   "fmt":"%d"},
-    "pop-chamois":  {"label":"Initial chamois population",  "group":"Initial populations", "default":200,  "lo":50,  "hi":400, "step":10,   "fmt":"%d"},
-    "pop-bear":     {"label":"Initial bear population",     "group":"Initial populations", "default":40,   "lo":10,  "hi":100, "step":2,    "fmt":"%d"},
-    "pop-broadleaf":{"label":"Initial broadleaf cover",     "group":"Initial populations", "default":100,  "lo":30,  "hi":200, "step":5,    "fmt":"%d"},
-    "pop-nontarget":{"label":"Initial non-target pop.",     "group":"Initial populations", "default":100,  "lo":30,  "hi":200, "step":5,    "fmt":"%d"},
-    "hunt-deer":    {"label":"Initial deer hunt intensity", "group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%d"},
-    "hunt-chamois": {"label":"Initial chamois hunt intens.","group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%d"},
-    "hunt-bear":    {"label":"Initial bear hunt intensity", "group":"Baseline management", "default":0,    "lo":0,   "hi":2,   "step":1,    "fmt":"%d"},
-    "log-broadleaf":{"label":"Initial logging intensity",   "group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%d"},
-    "agri-intensity":{"label":"Initial agri intensity",     "group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%d"},
-    "grazing-intensity":{"label":"Initial grazing intens.", "group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%d"},
+    "K-deer":       {"label":"Deer carrying capacity (K)",  "group":"Carrying capacities", "default":1200, "lo":400, "hi":3000,"step":50,   "fmt":"%.0f"},
+    "K-chamois":    {"label":"Chamois carrying cap. (K)",   "group":"Carrying capacities", "default":600,  "lo":200, "hi":1500,"step":50,   "fmt":"%.0f"},
+    "K-bear":       {"label":"Bear carrying cap. (K)",      "group":"Carrying capacities", "default":120,  "lo":40,  "hi":300, "step":5,    "fmt":"%.0f"},
+    "K-broadleaf":  {"label":"Broadleaf carrying cap. (K)", "group":"Carrying capacities", "default":200,  "lo":80,  "hi":500, "step":10,   "fmt":"%.0f"},
+    "K-nontarget":  {"label":"Non-target carrying cap. (K)","group":"Carrying capacities", "default":200,  "lo":80,  "hi":500, "step":10,   "fmt":"%.0f"},
+    "pop-deer":     {"label":"Initial deer population",     "group":"Initial populations", "default":400,  "lo":100, "hi":800, "step":10,   "fmt":"%.0f"},
+    "pop-chamois":  {"label":"Initial chamois population",  "group":"Initial populations", "default":200,  "lo":50,  "hi":400, "step":10,   "fmt":"%.0f"},
+    "pop-bear":     {"label":"Initial bear population",     "group":"Initial populations", "default":40,   "lo":10,  "hi":100, "step":2,    "fmt":"%.0f"},
+    "pop-broadleaf":{"label":"Initial broadleaf cover",     "group":"Initial populations", "default":100,  "lo":30,  "hi":200, "step":5,    "fmt":"%.0f"},
+    "pop-nontarget":{"label":"Initial non-target pop.",     "group":"Initial populations", "default":100,  "lo":30,  "hi":200, "step":5,    "fmt":"%.0f"},
+    "hunt-deer":    {"label":"Initial deer hunt intensity", "group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%.0f"},
+    "hunt-chamois": {"label":"Initial chamois hunt intens.","group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%.0f"},
+    "hunt-bear":    {"label":"Initial bear hunt intensity", "group":"Baseline management", "default":0,    "lo":0,   "hi":2,   "step":1,    "fmt":"%.0f"},
+    "log-broadleaf":{"label":"Initial logging intensity",   "group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%.0f"},
+    "agri-intensity":{"label":"Initial agri intensity",     "group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%.0f"},
+    "grazing-intensity":{"label":"Initial grazing intens.", "group":"Baseline management", "default":1,    "lo":0,   "hi":2,   "step":1,    "fmt":"%.0f"},
 }
 
-AGENT_PARAMS_INFO = [
-    ("WTA mean",        "0.45",  "Mean willingness-to-accept (drawn per agent from Normal)"),
-    ("WTA std dev",     "0.20",  "Std dev of WTA distribution"),
-    ("PTL mean",        "0.08",  "Mean propensity-to-leave per year"),
-    ("PTL std dev",     "0.05",  "Std dev of PTL distribution"),
-    ("Opp. perc. mean", "0.20",  "Mean opportunity perception (urban alternatives)"),
-    ("Opp. perc. std",  "0.08",  "Std dev of opportunity perception"),
-    ("Active share",    "80 %",  "Share of agents initially active"),
-    ("N agents",        "300",   "Number of human agents"),
-]
+# ── Agent behaviour parameters (applied BEFORE setup() so initialise-human uses them)
+AGENT_PARAMS: dict[str, dict] = {
+    "wta-mean": {"label":"WTA mean",              "group":"Agent behaviour", "default":0.45,"lo":0.10,"hi":0.90,"step":0.01, "fmt":"%.2f"},
+    "wta-sd":   {"label":"WTA std dev",           "group":"Agent behaviour", "default":0.20,"lo":0.01,"hi":0.40,"step":0.01, "fmt":"%.2f"},
+    "ptl-mean": {"label":"Propensity-to-leave μ", "group":"Agent behaviour", "default":0.08,"lo":0.01,"hi":0.30,"step":0.005,"fmt":"%.3f"},
+    "ptl-sd":   {"label":"Propensity-to-leave σ", "group":"Agent behaviour", "default":0.05,"lo":0.005,"hi":0.20,"step":0.005,"fmt":"%.3f"},
+    "opp-mean": {"label":"Opportunity percep. μ", "group":"Agent behaviour", "default":0.20,"lo":0.05,"hi":0.60,"step":0.01, "fmt":"%.2f"},
+    "opp-sd":   {"label":"Opportunity percep. σ", "group":"Agent behaviour", "default":0.08,"lo":0.01,"hi":0.25,"step":0.005,"fmt":"%.3f"},
+}
 
-INCOME_PARAMS_INFO = [
-    ("Plot merging boost (max)", "+5.0 /yr", "Income effect at level 3 merging"),
-    ("Investor boost (S2)",       "+3.0 /yr", "Investor collaboration income boost"),
-    ("Self-sustain boost",        "+1.5 /yr", "Beekeeping / eco-tourism income"),
-    ("Education boost",           "+0.5 /yr", "Education incentive income boost"),
-    ("Market access boost",       "+0.3 /yr", "Market access income boost"),
-    ("Marginal-loss comp.",       "+1.0 /yr", "Direct cash transfer for foregone income"),
-    ("Action bonus",              "+0.8 /yr", "Bonus per conservation action level"),
-    ("Hunt restriction cost",     "−2.0 /yr", "Income cost of high hunting restriction (uncompensated)"),
-    ("Log restriction cost",      "−2.0 /yr", "Income cost of high logging restriction (uncompensated)"),
-    ("S3 scenario penalty",       "−5.0 /yr", "Flat penalty for protected-area ban"),
-    ("Predator damage (max)",     "−1.5 × (bear/baseline)", "Uncompensated bear damage cost"),
-]
+# ── Income model coefficients (applied as post_setup; used every tick) ─────────
+INCOME_PARAMS: dict[str, dict] = {
+    "income-investor-boost": {"label":"Investor boost (S2)",      "group":"Income model", "default":3.0,"lo":0.0,"hi":8.0, "step":0.1,"fmt":"%.1f"},
+    "income-edu-boost":      {"label":"Education boost",          "group":"Income model", "default":0.5,"lo":0.0,"hi":3.0, "step":0.1,"fmt":"%.1f"},
+    "income-market-boost":   {"label":"Market access boost",      "group":"Income model", "default":0.3,"lo":0.0,"hi":2.0, "step":0.05,"fmt":"%.2f"},
+    "income-selfsustain":    {"label":"Self-sustain boost",       "group":"Income model", "default":1.5,"lo":0.0,"hi":5.0, "step":0.1,"fmt":"%.1f"},
+    "income-marginal-loss":  {"label":"Marginal-loss comp.",      "group":"Income model", "default":1.0,"lo":0.0,"hi":4.0, "step":0.1,"fmt":"%.1f"},
+    "income-action-bonus":   {"label":"Action incentive bonus",   "group":"Income model", "default":0.8,"lo":0.0,"hi":3.0, "step":0.1,"fmt":"%.1f"},
+    "income-merge-max":      {"label":"Plot-merging boost (max)", "group":"Income model", "default":5.0,"lo":0.5,"hi":10.0,"step":0.5,"fmt":"%.1f"},
+    "income-predator-coef":  {"label":"Predator damage coef.",    "group":"Income model", "default":1.5,"lo":0.0,"hi":5.0, "step":0.1,"fmt":"%.1f"},
+    "income-s3-penalty":     {"label":"S3 scenario penalty",      "group":"Income model", "default":5.0,"lo":0.0,"hi":12.0,"step":0.5,"fmt":"%.1f"},
+}
+
+# Combined dict for Parameters page iteration (agent before income, eco last)
+ALL_PARAMS: dict[str, dict] = {**AGENT_PARAMS, **INCOME_PARAMS, **ECO_PARAMS}
 
 MCDA_CRITERIA: dict[str, dict] = {
     "biodiversity_index": {"label":"Biodiversity index",        "dir":1,  "w":20},
@@ -207,11 +208,12 @@ def _unc_default(v: dict) -> dict:
 
 def _init_state() -> None:
     if "eco_vals" not in st.session_state:
-        st.session_state.eco_vals = {k: v["default"] for k, v in ECO_PARAMS.items()}
+        st.session_state.eco_vals = {k: v["default"] for k, v in ALL_PARAMS.items()}
     if "unc" not in st.session_state:
-        st.session_state.unc = {k: _unc_default(v) for k, v in ECO_PARAMS.items()}
-    # migrate old unc structure (adds dist/mean/std/mode if missing)
-    for pk, pd_def in ECO_PARAMS.items():
+        st.session_state.unc = {k: _unc_default(v) for k, v in ALL_PARAMS.items()}
+    # migrate old unc structure and add any new keys
+    for pk, pd_def in ALL_PARAMS.items():
+        st.session_state.eco_vals.setdefault(pk, float(pd_def["default"]))
         u = st.session_state.unc.setdefault(pk, _unc_default(pd_def))
         if "dist" not in u:
             d = float(pd_def["default"])
@@ -458,7 +460,7 @@ def _sample_one(pk: str, rng: np.random.Generator) -> float:
     u = st.session_state.unc[pk]
     if not u["on"]:
         return float(st.session_state.eco_vals[pk])
-    pd_def = ECO_PARAMS[pk]
+    pd_def = ALL_PARAMS[pk]
     hard_lo, hard_hi = float(pd_def["lo"]), float(pd_def["hi"])
     dist = u.get("dist", "Uniform")
     if dist == "Normal":
@@ -601,17 +603,15 @@ with st.sidebar:
     # ── Parameters sidebar ────────────────────────────────────────────────────
     elif page == "⚙ Parameters":
         st.info(
-            "Edit the 21 ecological & socioeconomic parameters used by the model.\n\n"
+            "Edit ecological, agent-behaviour, and income-model parameters.\n\n"
             "Enable **Uncertain?** on any parameter to sample it from a distribution "
             "in every MC run. Choose **Uniform**, **Normal**, or **Triangular** and "
-            "set the bounds — the median stays fixed for the deterministic reference."
+            "set the bounds. Agent-behaviour params are sampled before setup; "
+            "income coefficients are applied after setup."
         )
         if st.button("↺ Reset all to defaults", key="reset_params"):
-            st.session_state.eco_vals = {k: v["default"] for k, v in ECO_PARAMS.items()}
-            st.session_state.unc = {
-                k: {"on": False, "lo": round(v["default"]*0.8, 5), "hi": round(v["default"]*1.2, 5)}
-                for k, v in ECO_PARAMS.items()
-            }
+            st.session_state.eco_vals = {k: v["default"] for k, v in ALL_PARAMS.items()}
+            st.session_state.unc = {k: _unc_default(v) for k, v in ALL_PARAMS.items()}
             st.rerun()
         n_unc = sum(1 for u in st.session_state.unc.values() if u["on"])
         st.caption(f"{n_unc} parameter(s) uncertain (sampled in MC)")
@@ -681,8 +681,15 @@ if page == "🗺 Simulate":
             for i in range(n_runs):
                 try:
                     rng = np.random.default_rng(i)
-                    post = {pk: _sample_one(pk, rng) for pk in st.session_state.eco_vals}
-                    df, _ = run_simulation(MODEL_PATH, exp["params"], post_setup=post,
+                    pre_p  = dict(exp["params"])   # scenario switches etc.
+                    post_p = {}
+                    for pk in ALL_PARAMS:
+                        v = _sample_one(pk, rng)
+                        if pk in AGENT_PARAMS:
+                            pre_p[pk] = v          # must be set before setup()
+                        else:
+                            post_p[pk] = v         # set after setup()
+                    df, _ = run_simulation(MODEL_PATH, pre_p, post_setup=post_p,
                                           n_ticks=sim_years, seed=i)
                     exp_results.append(df)
                 except Exception as e:
