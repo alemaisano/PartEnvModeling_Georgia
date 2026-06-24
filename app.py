@@ -823,7 +823,7 @@ elif page == "⚙ Parameters":
 
     # ── Per-group parameter tables ────────────────────────────────────────────
     groups: dict[str, list] = {}
-    for k, v in ECO_PARAMS.items():
+    for k, v in ALL_PARAMS.items():
         groups.setdefault(v["group"], []).append(k)
 
     HDR_W = [3, 1.8, 0.9, 1.6]
@@ -839,7 +839,7 @@ elif page == "⚙ Parameters":
             )
 
         for pk in keys:
-            pd_def = ECO_PARAMS[pk]
+            pd_def = ALL_PARAMS[pk]
             u = st.session_state.unc[pk]
             hard_lo = float(pd_def["lo"])
             hard_hi = float(pd_def["hi"])
@@ -949,14 +949,6 @@ elif page == "⚙ Parameters":
 
         st.markdown("---")
 
-    # ── Fixed / internal parameters ───────────────────────────────────────────
-    with st.expander("Agent behavior parameters (fixed — uncertainty captured by MC seeds)", expanded=False):
-        st.dataframe(pd.DataFrame(AGENT_PARAMS_INFO, columns=["Parameter","Value","Description"]),
-                     use_container_width=True, hide_index=True)
-
-    with st.expander("Income model coefficients (fixed — not settable via pyNetLogo)", expanded=False):
-        st.dataframe(pd.DataFrame(INCOME_PARAMS_INFO, columns=["Component","Effect","Description"]),
-                     use_container_width=True, hide_index=True)
 
 
 
