@@ -1,0 +1,16 @@
+name,type,min,max,default,description
+scenario,slider,1,4,2,Governance scenario (1=BAU 2=Agreement 3=State-Led 4=Private)
+simulation-years,slider,10,50,30,Number of years to simulate
+agreement-duration,slider,0,50,25,Years the Sc2 voluntary agreement remains active before expiry
+rangers-in-agreement?,switch,,,,Include ranger patrols in the voluntary agreement (Sc2 only)
+compensation-enabled?,switch,,,,Compensate hunting/logging income losses (Sc2 only)
+agreement-market-access?,switch,,,,Open market access for community products (Sc2 only)
+agreement-education?,switch,,,,Education support raising opportunity perception (Sc2 only)
+agreement-selfsustain-incentive?,switch,,,,Beekeeping/eco-tourism income and habitat boost (Sc2 only)
+agreement-marginal-loss-incentive?,switch,,,,Direct cash transfer for foregone income (Sc2 only)
+agreement-action-incentive?,switch,,,,Bonus per conservation action taken (Sc2 only)
+agreement-predator-compensation?,switch,,,,Compensate bear livestock damage preventing WTA erosion (Sc2 only)
+agreement-land-tenure?,switch,,,,Land tenure security raising initial WTA (Sc2 only)
+agreement-grazing-reduction?,switch,,,,Reduce grazing intensity aiding ungulate recovery (Sc2 only)
+agreement-planting?,switch,,,,Community planting boosting broadleaf recovery (Sc2 only)
+agreement-plot-merging?,switch,,,,Plot consolidation for landscape connectivity and income (Sc2 only)
