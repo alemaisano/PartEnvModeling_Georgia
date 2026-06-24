@@ -16,6 +16,10 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 ROOT = Path(__file__).parent
+
+# Plotly chart config: show toolbar on hover, only the camera (download) button
+_PCFG = {"displayModeBar": "hover", "modeBarButtonsToKeep": ["toImage"],
+          "displaylogo": False, "toImageButtonOptions": {"format": "png", "scale": 2}}
 MODEL_PATH = str(ROOT / "Nlogo_final_model.nlogox")
 sys.path.insert(0, str(ROOT))
 
@@ -732,7 +736,7 @@ if page == "🗺 Simulate":
                 sp_filter=visible_sp, show_unc=show_unc,
             )
         st.plotly_chart(fig_sp, use_container_width=True,
-                        config={"displayModeBar": False})
+                        config=_PCFG)
 
     with col_left:
         if single:
@@ -743,13 +747,13 @@ if page == "🗺 Simulate":
                         st.plotly_chart(
                             small_chart_single(exp0["results"], cname, title,
                                                exp0["color"], ylabel, show_unc=show_unc),
-                            use_container_width=True, config={"displayModeBar": False},
+                            use_container_width=True, config=_PCFG,
                         )
         else:
             # Single combined subplot figure — legend supports double-click isolation
             st.plotly_chart(
                 metrics_chart_multi(rr_filtered, show_unc=show_unc),
-                use_container_width=True, config={"displayModeBar": False},
+                use_container_width=True, config=_PCFG,
             )
 
     st.caption("💡 **Double-click** a legend item to isolate it; single-click to toggle.")
@@ -1090,7 +1094,7 @@ elif page == "📊 MCDA":
                 paper_bgcolor="white", plot_bgcolor="#f8f9fa",
             )
             st.plotly_chart(fig_w, use_container_width=True,
-                            config={"displayModeBar": False})
+                            config=_PCFG)
 
     # ── Score profile per criterion (parallel-coordinates style) ──────────────
     st.divider()
@@ -1190,7 +1194,7 @@ elif page == "📊 MCDA":
         itemclick="toggle", itemdoubleclick="toggleothers",
     )
     st.plotly_chart(fig_pc, use_container_width=True,
-                    config={"displayModeBar": False})
+                    config=_PCFG)
 
     # ── Bump chart: ranking across criteria ───────────────────────────────────
     st.markdown("#### Ranking across criteria")
@@ -1243,4 +1247,4 @@ elif page == "📊 MCDA":
                     yanchor="bottom", y=1.02, xanchor="left", x=0),
     )
     st.plotly_chart(fig_bump, use_container_width=True,
-                    config={"displayModeBar": False})
+                    config=_PCFG)
