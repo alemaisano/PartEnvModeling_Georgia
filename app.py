@@ -1088,46 +1088,100 @@ elif page == "📊 MCDA":
             st.plotly_chart(fig_w, use_container_width=True,
                             config={"displayModeBar": False})
 
-    # ── Global sensitivity: Spearman rank correlation ─────────────────────────
-    st.markdown("#### Global sensitivity — Spearman rank correlation")
-    st.caption(
-        "Each cell is the Spearman ρ between a criterion's weight (across 1 000 random draws) "
-        "and that experiment's score. **Red** = higher weight → higher score (experiment favoured by "
-        "this criterion). **Blue** = higher weight → lower score. Magnitude = sensitivity strength."
+    # ── Criterion-level scores (small multiples) ──────────────────────────────
+    st.divider()
+    st.markdown("#### Score per criterion")
+    st.caption("Normalised score (0–1) of each scenario on every active criterion.")
+
+    _nc = len(crits_in)
+    _ncols = min(3, _nc)
+    _nrows = (_nc + _ncols - 1) // _ncols
+    _crit_labels = [MCDA_CRITERIA[c]["label"] for c in crits_in]
+
+    fig_sm = make_subplots(
+        rows=_nrows, cols=_ncols,
+        subplot_titles=_crit_labels,
+        horizontal_spacing=0.06,
+        vertical_spacing=0.18,
     )
+    for _i, _crit in enumerate(crits_in):
+        _r, _c = divmod(_i, _ncols)
+        for exp in rr:
+            if exp["name"] not in df_norm.index:
+                continue
+            _val = float(df_norm.loc[exp["name"], _crit])
+            fig_sm.add_trace(go.Bar(
+                x=[exp["name"]], y=[_val],
+                marker_color=exp["color"],
+                name=exp["name"],
+                showlegend=(_i == 0),
+                legendgroup=exp["name"],
+            ), row=_r + 1, col=_c + 1)
 
-    def _spearman(x: np.ndarray, y: np.ndarray) -> float:
-        """Rank-based correlation without scipy."""
-        n = len(x)
-        rx = np.argsort(np.argsort(x)).astype(float)
-        ry = np.argsort(np.argsort(y)).astype(float)
-        d2 = ((rx - ry) ** 2).sum()
-        return float(1 - 6 * d2 / (n * (n ** 2 - 1)))
-
-    corr_matrix = np.zeros((len(crits_in), len(exp_names)))
-    for ci, crit in enumerate(crits_in):
-        for ei, exp_name in enumerate(exp_names):
-            corr_matrix[ci, ei] = _spearman(mc_w_arr[:, ci], mc_sc_arr[:, ei])
-
-    crit_short = [MCDA_CRITERIA[c]["label"] for c in crits_in]
-
-    fig_heat = go.Figure(go.Heatmap(
-        z=corr_matrix,
-        x=exp_names,
-        y=crit_short,
-        colorscale="RdBu",
-        zmid=0, zmin=-1, zmax=1,
-        text=[[f"{v:.2f}" for v in row] for row in corr_matrix],
-        texttemplate="%{text}",
-        textfont=dict(size=10),
-        colorbar=dict(title="Spearman ρ", tickfont=dict(size=9)),
-    ))
-    fig_heat.update_layout(
-        height=40 + 38 * len(crits_in),
-        margin=dict(l=180, r=10, t=20, b=80),
-        xaxis=dict(tickangle=-30, tickfont=dict(size=9)),
-        yaxis=dict(tickfont=dict(size=9), autorange="reversed"),
+    fig_sm.update_yaxes(range=[0, 1], tickfont=dict(size=8))
+    fig_sm.update_xaxes(tickfont=dict(size=7), tickangle=-30)
+    fig_sm.update_layout(
+        height=180 + 180 * _nrows,
+        barmode="group",
+        margin=dict(l=10, r=10, t=40, b=10),
         paper_bgcolor="white",
+        plot_bgcolor="#f8f9fa",
+        legend=dict(font=dict(size=9), orientation="h",
+                    yanchor="bottom", y=1.04, xanchor="left", x=0),
+        showlegend=True,
     )
-    st.plotly_chart(fig_heat, use_container_width=True,
+    st.plotly_chart(fig_sm, use_container_width=True,
+                    config={"displayModeBar": False})
+
+    # ── Bump chart: ranking across criteria ───────────────────────────────────
+    st.markdown("#### Ranking across criteria")
+    st.caption(
+        "Each line is a scenario. The y-axis shows its rank on each criterion "
+        "(1 = best). A scenario that stays near the top across all criteria is "
+        "robust; one that swings widely has trade-offs."
+    )
+
+    # per-criterion ranks (higher normalised score → rank 1)
+    _ranked_by_crit: dict[str, dict[str, int]] = {}
+    for _crit in crits_in:
+        _sc = {
+            exp["name"]: float(df_norm.loc[exp["name"], _crit])
+            for exp in rr if exp["name"] in df_norm.index
+        }
+        _sorted = sorted(_sc, key=_sc.get, reverse=True)
+        _ranked_by_crit[_crit] = {nm: rnk + 1 for rnk, nm in enumerate(_sorted)}
+
+    _n_exp = sum(1 for exp in rr if exp["name"] in df_norm.index)
+
+    fig_bump = go.Figure()
+    for exp in rr:
+        if exp["name"] not in df_norm.index:
+            continue
+        _ranks = [_ranked_by_crit[c].get(exp["name"], _n_exp) for c in crits_in]
+        fig_bump.add_trace(go.Scatter(
+            x=_crit_labels,
+            y=_ranks,
+            mode="lines+markers",
+            name=exp["name"],
+            line=dict(color=exp["color"], width=2),
+            marker=dict(size=9, color=exp["color"]),
+        ))
+
+    fig_bump.update_layout(
+        height=360,
+        margin=dict(l=40, r=10, t=10, b=100),
+        yaxis=dict(
+            autorange="reversed",
+            tickvals=list(range(1, _n_exp + 1)),
+            title="Rank",
+            tickfont=dict(size=9),
+            gridcolor="#e0e0e0",
+        ),
+        xaxis=dict(tickangle=-30, tickfont=dict(size=9), gridcolor="#e0e0e0"),
+        paper_bgcolor="white",
+        plot_bgcolor="#f8f9fa",
+        legend=dict(font=dict(size=9), orientation="h",
+                    yanchor="bottom", y=1.02, xanchor="left", x=0),
+    )
+    st.plotly_chart(fig_bump, use_container_width=True,
                     config={"displayModeBar": False})
