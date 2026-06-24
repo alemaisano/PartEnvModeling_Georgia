@@ -13,10 +13,12 @@ converts the .nlogox (NetLogo 7 XML) to a temporary .nlogo file automatically.
 
 import os
 import sys
+import tarfile
+import urllib.request
 from pathlib import Path
 import pandas as pd
 
-# ── Ensure Java 17 is visible before JPype/pyNetLogo starts the JVM ─────────
+# ── Windows: point at local Temurin 17 ───────────────────────────────────────
 _TEMURIN = r"C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
 if sys.platform == "win32" and Path(_TEMURIN).exists():
     os.environ.setdefault("JAVA_HOME", _TEMURIN)
@@ -29,6 +31,66 @@ try:
     PYNETLOGO_AVAILABLE = True
 except ImportError:
     PYNETLOGO_AVAILABLE = False
+
+# ── NetLogo home resolution (Linux / Streamlit Cloud) ────────────────────────
+_NL_VERSION   = "7.0.3"
+_NL_TARBALL   = f"NetLogo-{_NL_VERSION}-64.tgz"
+_NL_URL       = (
+    os.environ.get("NETLOGO_DOWNLOAD_URL")
+    or f"https://ccl.northwestern.edu/netlogo/{_NL_VERSION}/{_NL_TARBALL}"
+)
+_NL_CACHE_DIR = Path(os.environ.get("NETLOGO_CACHE_DIR", "/tmp/netlogo_install"))
+_NL_EXTRACTED = _NL_CACHE_DIR / f"NetLogo {_NL_VERSION}"
+
+
+def _ensure_netlogo_home() -> str | None:
+    """
+    Return the NetLogo installation directory for pyNetLogo.
+
+    Priority:
+      1. NETLOGO_HOME env var (user-supplied, fastest)
+      2. Already-extracted cache in /tmp  (warm Streamlit container)
+      3. Download + extract from CCL servers (cold start, once per container)
+      4. None  → pyNetLogo auto-detects (works on Windows)
+    """
+    if sys.platform == "win32":
+        return None  # pyNetLogo reads Windows registry automatically
+
+    # 1. Explicit env var
+    env_home = os.environ.get("NETLOGO_HOME", "")
+    if env_home and Path(env_home).exists():
+        return env_home
+
+    # 2. Common Linux install paths
+    candidates = [
+        _NL_EXTRACTED,
+        Path("/usr/local/netlogo"),
+        Path("/opt/netlogo"),
+        Path.home() / "netlogo",
+    ]
+    for c in candidates:
+        if c.exists():
+            return str(c)
+
+    # 3. Download from CCL (Streamlit Cloud cold start)
+    _NL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    tarball = _NL_CACHE_DIR / _NL_TARBALL
+    if not tarball.exists():
+        print(f"[netlogo_runner] downloading NetLogo {_NL_VERSION} …", flush=True)
+        urllib.request.urlretrieve(_NL_URL, tarball)
+    if not _NL_EXTRACTED.exists():
+        print(f"[netlogo_runner] extracting {tarball} …", flush=True)
+        with tarfile.open(tarball, "r:gz") as tf:
+            tf.extractall(_NL_CACHE_DIR)
+    if _NL_EXTRACTED.exists():
+        return str(_NL_EXTRACTED)
+
+    raise RuntimeError(
+        f"Could not locate NetLogo {_NL_VERSION}. "
+        "Set the NETLOGO_HOME environment variable to the NetLogo installation directory, "
+        "or set NETLOGO_DOWNLOAD_URL to a reachable download URL. "
+        "On Streamlit Cloud add these in App settings → Secrets."
+    )
 
 # ── Reporter map: Python key → NetLogo reporter name ────────────────────────
 REPORTERS = {
@@ -140,7 +202,7 @@ def run_simulation(
     model_path = prepare_model_path(model_path)
     warnings: list[str] = []
 
-    nl = pynetlogo.NetLogoLink(gui=gui)
+    nl = pynetlogo.NetLogoLink(gui=gui, netlogo_home=_ensure_netlogo_home())
     # Streamlit runs user code in worker threads that have no Java ClassLoader.
     # Setting it here prevents NullPointerException inside NetLogo's resource loading.
     try:
