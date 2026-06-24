@@ -438,7 +438,12 @@ with st.sidebar:
             row_cols = st.columns(2)
             for j, pk in enumerate(preset_keys[i:i+2]):
                 if row_cols[j].button(pk, key=f"preset_{pk}", use_container_width=True):
-                    st.session_state.builder_sw = dict(S2_PRESETS[pk])
+                    preset = S2_PRESETS[pk]
+                    st.session_state.builder_sw = dict(preset)
+                    # write directly into each checkbox's widget-state key so
+                    # the checkboxes reflect the preset on rerun
+                    for sw_key, sw_val in preset.items():
+                        st.session_state[f"sw_{sw_key}"] = sw_val
                     st.session_state.builder_name = pk
                     st.rerun()
 
