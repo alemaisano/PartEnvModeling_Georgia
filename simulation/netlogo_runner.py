@@ -11,11 +11,18 @@ NOTE: pyNetLogo typically expects a .nlogo file. The helper `prepare_model_path`
 converts the .nlogox (NetLogo 7 XML) to a temporary .nlogo file automatically.
 """
 
-import tempfile
 import os
-import xml.etree.ElementTree as ET
+import sys
 from pathlib import Path
 import pandas as pd
+
+# ── Ensure Java 17 is visible before JPype/pyNetLogo starts the JVM ─────────
+_TEMURIN = r"C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
+if sys.platform == "win32" and Path(_TEMURIN).exists():
+    os.environ.setdefault("JAVA_HOME", _TEMURIN)
+    _bin = str(Path(_TEMURIN) / "bin")
+    if _bin not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = _bin + os.pathsep + os.environ.get("PATH", "")
 
 try:
     import pynetlogo
@@ -78,49 +85,18 @@ SWITCH_PARAMS = {
 
 def prepare_model_path(nlogox_path: str) -> str:
     """
-    Convert a .nlogox (NetLogo 7 XML) file to a temporary .nlogo file that
-    pyNetLogo can load.  Returns the path of the created .nlogo file.
+    Return the absolute path to the NetLogo model file, ready for pyNetLogo.
 
-    The temp file is placed next to the original so NetLogo can resolve any
-    relative paths inside the model.
+    NetLogo 7 reads .nlogox natively via its load-model command, so we pass
+    it directly.  We use Path.as_posix() to produce C:/Users/... style paths;
+    str(Path) on Windows gives backslashes that Java's path resolver prefixes
+    with a spurious leading '/', breaking load-model.
     """
-    nlogox_path = Path(nlogox_path)
-    nlogo_path = nlogox_path.with_suffix(".nlogo")
-
-    if nlogo_path.exists():
-        return str(nlogo_path)
-
-    try:
-        tree = ET.parse(nlogox_path)
-        root = tree.getroot()
-        code_el = root.find("code")
-        if code_el is None:
-            raise ValueError("No <code> element found in .nlogox")
-        code = code_el.text or ""
-    except ET.ParseError as exc:
-        raise RuntimeError(f"Cannot parse {nlogox_path}: {exc}") from exc
-
-    # Minimal .nlogo structure: code section + empty sections separated by
-    # the NetLogo section delimiter.
-    nlogo_content = (
-        code.strip()
-        + "\n@#$#@#$#@\n"  # interface section (empty — we set params via commands)
-        + "@#$#@#$#@\n"    # info section
-        + "@#$#@#$#@\n"    # turtle shapes
-        + "NetLogo 7.0.0\n"
-        + "@#$#@#$#@\n"    # behaviorspace
-        + "@#$#@#$#@\n"    # system dynamics
-        + "@#$#@#$#@\n"    # quick help
-        + "@#$#@#$#@\n"    # bitmap section
-        + "@#$#@#$#@\n"    # link shapes
-        + "0\n"            # model settings
-        + "@#$#@#$#@\n"
-        + "0\n"
-        + "@#$#@#$#@\n"
-    )
-
-    nlogo_path.write_text(nlogo_content, encoding="utf-8")
-    return str(nlogo_path)
+    p = Path(nlogox_path).resolve()
+    if not p.exists():
+        raise FileNotFoundError(f"Model file not found: {p}")
+    # as_posix() → "C:/Users/..." which Java handles correctly on Windows.
+    return p.as_posix()
 
 
 def _set_params(nl, params: dict) -> list[str]:
@@ -164,6 +140,19 @@ def run_simulation(
     warnings: list[str] = []
 
     nl = pynetlogo.NetLogoLink(gui=gui)
+    # Streamlit runs user code in worker threads that have no Java ClassLoader.
+    # Setting it here prevents NullPointerException inside NetLogo's resource loading.
+    try:
+        import jpype
+        if jpype.isJVMStarted():
+            thread = jpype.JClass("java.lang.Thread")
+            loader = jpype.JClass("java.lang.ClassLoader")
+            ct = thread.currentThread()
+            if ct.getContextClassLoader() is None:
+                ct.setContextClassLoader(loader.getSystemClassLoader())
+    except Exception:
+        pass
+
     try:
         nl.load_model(model_path)
 
