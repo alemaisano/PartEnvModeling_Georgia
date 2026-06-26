@@ -181,6 +181,15 @@ SPECIES = {
     "nontarget_index": ("#9370DB", "Non-target"),
 }
 
+# 4-panel layout: (panel title, [(col, color, label), ...])
+SPECIES_PANELS = [
+    ("Deer",                   [("deer_index",      "#A0522D", "Deer")]),
+    ("Chamois",                [("chamois_index",   "#228B22", "Chamois")]),
+    ("Brown Bear",             [("bear_index",      "#4169E1", "Brown Bear")]),
+    ("Broadleaf & Non-target", [("broadleaf_index", "#2E8B57", "Broadleaf"),
+                                ("nontarget_index", "#9370DB", "Non-target")]),
+]
+
 DASHBOARD_METRICS = [
     ("pct_accepted",       "% Accepting Agreement", "%"),
     ("income_index",       "Income (index)",         "index"),
@@ -258,17 +267,18 @@ def _percentiles(results: list, col: str):
 
 
 def _draw_band(fig, t, p10, p25, p50, p75, p90, color,
-               name="", showlegend=False, show_unc=True):
+               name="", showlegend=False, show_unc=True, row=None, col=None):
+    pos = dict(row=row, col=col) if row is not None else {}
     if show_unc:
         kw = dict(line=dict(width=0), showlegend=False, hoverinfo="skip")
-        fig.add_trace(go.Scatter(x=t, y=p90, **kw))
+        fig.add_trace(go.Scatter(x=t, y=p90, **kw), **pos)
         fig.add_trace(go.Scatter(x=t, y=p10, fill="tonexty",
-                                 fillcolor=hex_rgba(color, 0.13), **kw))
-        fig.add_trace(go.Scatter(x=t, y=p75, **kw))
+                                 fillcolor=hex_rgba(color, 0.13), **kw), **pos)
+        fig.add_trace(go.Scatter(x=t, y=p75, **kw), **pos)
         fig.add_trace(go.Scatter(x=t, y=p25, fill="tonexty",
-                                 fillcolor=hex_rgba(color, 0.32), **kw))
+                                 fillcolor=hex_rgba(color, 0.32), **kw), **pos)
     fig.add_trace(go.Scatter(x=t, y=p50, line=dict(color=color, width=2),
-                             name=name, showlegend=showlegend))
+                             name=name, showlegend=showlegend), **pos)
 
 
 def _base_layout(fig, title, ylabel, height):
@@ -382,67 +392,86 @@ def metrics_chart_multi(run_results, show_unc=True, height=660):
 
 
 def species_chart(results_or_list, *, multi=False, sp_filter=None,
-                  exp_filter=None, show_unc=True, height=540):
+                  exp_filter=None, show_unc=True, height=700):
     """
-    Unified species chart.
+    4-panel species chart (2×2 subplots): Deer / Chamois / Brown Bear / Broadleaf+Non-target.
     single mode : results_or_list is list[pd.DataFrame] for one experiment.
     multi mode  : results_or_list is list[{name, color, results}].
-    sp_filter   : list of SPECIES keys to display (None = all).
     exp_filter  : list of experiment names to display (None = all, multi only).
     show_unc    : draw 10-90 / 25-75 bands.
-    Double-click a legend item to isolate; single-click to toggle.
     """
+    from plotly.subplots import make_subplots
     DASHES = ["solid", "dash", "dot", "dashdot", "longdash"]
-    fig = go.Figure()
-    visible_sp = sp_filter if sp_filter else list(SPECIES.keys())
+
+    panel_titles = [p[0] for p in SPECIES_PANELS]
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=panel_titles,
+        shared_xaxes=False,
+        shared_yaxes=False,
+        horizontal_spacing=0.10,
+        vertical_spacing=0.18,
+    )
+    panel_positions = [(1, 1), (1, 2), (2, 1), (2, 2)]
+    _seen_lg: set = set()
 
     if not multi:
         results = results_or_list
-        for col, (sc, sp_name) in SPECIES.items():
-            if col not in visible_sp:
-                continue
-            t, p10, p25, p50, p75, p90 = _percentiles(results, col)
-            if t is None:
-                continue
-            _draw_band(fig, t, p10, p25, p50, p75, p90, sc,
-                       name=sp_name, showlegend=True, show_unc=show_unc)
-        title = "Target Species (index, baseline = 100)"
+        for (row, col), (_, species_list) in zip(panel_positions, SPECIES_PANELS):
+            for sp_col, sc, sp_name in species_list:
+                t, p10, p25, p50, p75, p90 = _percentiles(results, sp_col)
+                if t is None:
+                    continue
+                show = sp_col not in _seen_lg
+                _seen_lg.add(sp_col)
+                _draw_band(fig, t, p10, p25, p50, p75, p90, sc,
+                           name=sp_name, showlegend=show, show_unc=show_unc,
+                           row=row, col=col)
 
     else:
         exps = results_or_list
         if exp_filter:
             exps = [e for e in exps if e["name"] in exp_filter]
-        one_exp = (len(exps) == 1)   # single visible experiment → color by species
-        for exp in exps:
-            for i, (col, (sc, sp_name)) in enumerate(SPECIES.items()):
-                if col not in visible_sp:
-                    continue
-                t, p10, p25, p50, p75, p90 = _percentiles(exp["results"], col)
-                if t is None:
-                    continue
-                color = sc if one_exp else exp["color"]
-                label = sp_name if one_exp else f"{exp['name']} — {sp_name}"
-                n_before = len(fig.data)
-                _draw_band(fig, t, p10, p25, p50, p75, p90, color,
-                           name=label, showlegend=True, show_unc=show_unc)
-                lg = f"{exp['name']}_{col}"
-                for tr in fig.data[n_before:]:
-                    tr.legendgroup = lg
-                for tr in fig.data[n_before:-1]:
-                    tr.showlegend = False
-                if not one_exp:
-                    fig.data[-1].line.dash = DASHES[i % len(DASHES)]
-        title = ("Target Species (index, baseline = 100)" if one_exp
-                 else "Target Species — experiments compared")
+        one_exp = len(exps) == 1
 
-    n_leg_rows = max(1, len(visible_sp) * (len(exps) if multi and exps else 1) // 3)
-    leg_y = -0.06 - 0.07 * n_leg_rows
+        for (row, col), (_, species_list) in zip(panel_positions, SPECIES_PANELS):
+            for sp_idx, (sp_col, sc, sp_name) in enumerate(species_list):
+                for exp in exps:
+                    t, p10, p25, p50, p75, p90 = _percentiles(exp["results"], sp_col)
+                    if t is None:
+                        continue
+                    if one_exp:
+                        color, label, lg = sc, sp_name, sp_col
+                    else:
+                        color = exp["color"]
+                        label = (f"{exp['name']} — {sp_name}"
+                                 if len(species_list) > 1 else exp["name"])
+                        lg = f"{exp['name']}_{sp_col}"
+                    show = lg not in _seen_lg
+                    _seen_lg.add(lg)
+                    n_before = len(fig.data)
+                    _draw_band(fig, t, p10, p25, p50, p75, p90, color,
+                               name=label, showlegend=show, show_unc=show_unc,
+                               row=row, col=col)
+                    for tr in fig.data[n_before:]:
+                        tr.legendgroup = lg
+                    for tr in fig.data[n_before:-1]:
+                        tr.showlegend = False
+                    if not one_exp and len(species_list) > 1:
+                        fig.data[-1].line.dash = DASHES[sp_idx % len(DASHES)]
+
+    for r, c in panel_positions:
+        fig.update_xaxes(title_text="years", title_font=dict(size=8),
+                         tickfont=dict(size=8), row=r, col=c)
+        fig.update_yaxes(title_text="index", title_font=dict(size=8),
+                         tickfont=dict(size=8), row=r, col=c)
+
+    n_exp = len(results_or_list) if multi else 1
+    n_leg_rows = max(1, (len(SPECIES_PANELS) + n_exp - 1) // 3)
+    leg_y = -0.04 - 0.06 * n_leg_rows
     fig.update_layout(
-        title=dict(text=title, font=dict(size=10), x=0.5, xanchor="center"),
         height=height,
-        margin=dict(l=38, r=6, t=32, b=max(60, 24 + 22 * n_leg_rows)),
-        xaxis=dict(title=dict(text="years", font=dict(size=8)), tickfont=dict(size=8)),
-        yaxis=dict(title=dict(text="index", font=dict(size=8)), tickfont=dict(size=8)),
+        margin=dict(l=42, r=6, t=50, b=max(70, 30 + 22 * n_leg_rows)),
         legend=dict(orientation="h", yanchor="top", y=leg_y,
                     xanchor="center", x=0.5, font=dict(size=8),
                     itemclick="toggle", itemdoubleclick="toggleothers"),
@@ -737,34 +766,15 @@ if page == "🗺 Simulate":
     else:
         rr_filtered = rr
 
-    # species filter lives above the right column; collect it before layout
-    sp_all = list(SPECIES.keys())
-    sp_labels = {k: v[1] for k, v in SPECIES.items()}
-
     # ── Main chart layout ────────────────────────────────────────────────────
     col_left, col_right = st.columns([3, 2], gap="small")
 
     with col_right:
-        sp_filter = st.multiselect(
-            "Show species", sp_all, default=sp_all,
-            format_func=lambda k: sp_labels[k],
-            key="sp_filter", label_visibility="collapsed",
-            placeholder="Filter species…",
-        )
-        visible_sp = sp_filter if sp_filter else sp_all
-
         if single:
-            fig_sp = species_chart(
-                exp0["results"], multi=False,
-                sp_filter=visible_sp, show_unc=show_unc,
-            )
+            fig_sp = species_chart(exp0["results"], multi=False, show_unc=show_unc)
         else:
-            fig_sp = species_chart(
-                rr_filtered, multi=True,
-                sp_filter=visible_sp, show_unc=show_unc,
-            )
-        st.plotly_chart(fig_sp, use_container_width=True,
-                        config=_PCFG)
+            fig_sp = species_chart(rr_filtered, multi=True, show_unc=show_unc)
+        st.plotly_chart(fig_sp, use_container_width=True, config=_PCFG)
 
     with col_left:
         if single:
