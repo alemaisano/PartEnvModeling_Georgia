@@ -76,7 +76,6 @@ globals [
   community-income-index
   years-elapsed
   grazing-hay-facility-paid?
-  human-pop-at-tick-start        ;; population captured before emigration each tick
 
   ;; Agreement duration tracking
   agreement-year-start
@@ -111,12 +110,11 @@ to setup
   set agreement-year-start 0
   set agreement-active? (scenario = 2)
 
-  ;; All scenarios start from identical initial conditions (audit requirement)
   set pop-chamois    200    set K-chamois    600
-  set pop-bear        40    set K-bear        80   ;; K=80 ~ 4.1 bears/100km² across priority sites
+  set pop-bear        40    set K-bear       120
   set pop-deer       400    set K-deer      1200
-  set pop-broadleaf  100    set K-broadleaf  150   ;; max ~50% above baseline; 200 implied doubling
-  set pop-nontarget  100    set K-nontarget  150
+  set pop-broadleaf  100    set K-broadleaf  200
+  set pop-nontarget  100    set K-nontarget  200
 
   set raw-start-chamois   pop-chamois
   set raw-start-bear      pop-bear
@@ -124,13 +122,11 @@ to setup
   set raw-start-broadleaf pop-broadleaf
   set raw-start-nontarget pop-nontarget
 
-  ;; Intrinsic growth rates — calibrated from regional literature (see README)
-  ;; These are potential growth rates, NOT observed net trends
-  set r-chamois   0.06   ;; rec: 0.06 [0.03–0.10]; 0.10 is optimistic upper bound
-  set r-bear      0.04   ;; rec: 0.04 [0.02–0.05]; recovering EU bears ~4–5%
-  set r-deer      0.07   ;; rec: 0.07 [0.04–0.11]; Caspian red-deer observed net ~2.2%
-  set r-broadleaf 0.01   ;; rec: 0.01 for area; retain 0.03 only for quality index
-  set r-nontarget 0.04   ;; rec: 0.04 [0.02–0.06]; composite recovery rate
+  set r-chamois   0.10   ;; netto con kill 0.08 = +0.02 -> quasi piatto, poi logistic
+  set r-bear      0.05   ;; netto con kill 0.03 = +0.02 -> ma bear ha hunt=0 quindi scende poco
+  set r-deer      0.11   ;; netto con kill 0.08 = +0.03 -> quasi piatto
+  set r-broadleaf 0.03   ;; netto con kill 0.04 = -0.01 -> lieve declino
+  set r-nontarget 0.06   ;; netto con kill 0.08+0.03 = -0.05 -> declino
 
   set hunt-chamois   1
   set hunt-bear      0
@@ -164,12 +160,10 @@ to setup
   set income-s3-penalty     5.0
 
   ;; Agent behaviour defaults (only if not already set by pyNetLogo pre-setup)
-  ;; WTA SD 0.15 prevents excessive clamping at 0/1 vs prior 0.20
-  ;; PTL calibrated so BAU decline ≈ 3–3.5 %/yr (Khulo/Shuakhevi census target)
   if wta-mean = 0 [ set wta-mean 0.45 ]
-  if wta-sd   = 0 [ set wta-sd   0.15 ]
-  if ptl-mean = 0 [ set ptl-mean 0.030 ]
-  if ptl-sd   = 0 [ set ptl-sd   0.020 ]
+  if wta-sd   = 0 [ set wta-sd   0.20 ]
+  if ptl-mean = 0 [ set ptl-mean 0.08 ]
+  if ptl-sd   = 0 [ set ptl-sd   0.05 ]
   if opp-mean = 0 [ set opp-mean 0.20 ]
   if opp-sd   = 0 [ set opp-sd   0.08 ]
 
@@ -190,9 +184,7 @@ to apply-scenario-setup
   if scenario = 2 [
     set rangers-active?     rangers-in-agreement?
     set ranger-patrol-level (ifelse-value rangers-active? [ 2 ] [ 0 ])
-    ;; Investor removed: was random (p=0.6), obscuring scenario meaning.
-    ;; Market-access / investor collaboration exposed as explicit switches instead.
-    set investor-active?    false
+    set investor-active?    (random-float 1.0 < 0.6)
   ]
 
   if scenario = 3 [
@@ -202,12 +194,21 @@ to apply-scenario-setup
   ]
 
   if scenario = 4 [
-    ;; All scenarios start from identical ecological baseline (audit requirement).
-    ;; S4 degradation accumulates through habitat-loss each tick, not at setup.
-    set rangers-active?  false
-    set investor-active? true
-    ;; Hunt/log/agri set to 0 each tick by apply-scenario-tick-rules
-  ]
+  set rangers-active?     false
+  set investor-active?    true
+  set ecosystem-status    0
+  set hunt-nontarget 0  set hunt-chamois 0
+  set hunt-bear      0  set hunt-deer    0
+  set log-broadleaf  0
+  set agri-intensity 0  set grazing-intensity 0
+
+  ;; Popolazioni già degradate al momento della privatizzazione
+  set pop-chamois    (pop-chamois    * 0.5)
+  set pop-bear       (pop-bear       * 0.5)
+  set pop-deer       (pop-deer       * 0.5)
+  set pop-broadleaf  (pop-broadleaf  * 0.6)
+  set pop-nontarget  (pop-nontarget  * 0.5)
+]
 
 end
 
@@ -252,7 +253,6 @@ end
 to go
   if years-elapsed >= simulation-years [ stop ]
   set years-elapsed (years-elapsed + 1)
-  set human-pop-at-tick-start human-pop   ;; capture before emigration for rate reporter
   set emigrants-this-year 0
 
   ;; Check agreement duration expiry (Scenario 2)
@@ -273,6 +273,7 @@ to go
   ]
 
   aggregate-community-actions
+  update-hunting-logging-intensity
   update-agri-grazing-intensity
   update-ecosystem-status
   update-species-populations
@@ -344,8 +345,8 @@ to update-willingness-to-accept
   let income-nudge (income-growth - 100) * 0.003
   let opport-nudge opportunity-perception * 0.08
 
-  ;; Land tenure: one-time effect at initialisation only; no cumulative annual drift
-  let tenure-nudge 0
+  ;; Land tenure security increases commitment
+  let tenure-nudge (ifelse-value agreement-land-tenure? [ 0.02 ] [ 0 ])
 
   ;; Predator damage reduces WTA unless compensated
   let predator-penalty (ifelse-value
@@ -439,40 +440,68 @@ end
 
 ;; ---------------------------------------------------------------
 ;; HUNTING / LOGGING INTENSITY
-;; Patrol now acts as a multiplicative pressure multiplier applied
-;; in update-species-populations rather than changing the categorical
-;; hunt-intensity level. Hunt levels are fixed by setup / scenario-tick-rules.
 ;; ---------------------------------------------------------------
+to update-hunting-logging-intensity
+
+  if scenario = 3 and years-elapsed >= 2 [ stop ]
+  if scenario = 4 [ stop ]
+  if scenario = 1 [ stop ]
+
+  let eff-patrol min list 3 (floor community-patrol-level + ranger-patrol-level)
+
+  set hunt-nontarget apply-patrol-effect hunt-nontarget eff-patrol
+  set hunt-chamois   apply-patrol-effect hunt-chamois   eff-patrol
+  set hunt-bear      apply-patrol-effect hunt-bear      eff-patrol
+  set hunt-deer      apply-patrol-effect hunt-deer      eff-patrol
+  set log-broadleaf  apply-patrol-effect log-broadleaf  eff-patrol
+
+end
+
+to-report apply-patrol-effect [ intensity patrol-lvl ]
+  if patrol-lvl = 0 [
+    ifelse years-elapsed > 20
+      [ report min list 2 (intensity + 1) ]
+      [ report intensity ]
+  ]
+  if patrol-lvl = 1 [ report intensity ]
+  if patrol-lvl = 2 [ report max list 0 (intensity - 1) ]
+  if patrol-lvl >= 3 [ report max list 0 (intensity - 2) ]
+  report intensity
+end
 
 ;; ---------------------------------------------------------------
 ;; AGRICULTURE AND GRAZING INTENSITY
 ;; ---------------------------------------------------------------
 to update-agri-grazing-intensity
-  ;; Automatic escalation after year 20 removed (no empirical support for fixed date).
-  ;; Levels can only decrease through community conservation actions (S2 only).
+
   if scenario = 3 and years-elapsed >= 2 [ stop ]
   if scenario = 4 [ stop ]
   if scenario = 1 [ stop ]
 
   let agri-action floor community-agri-level
+  if agri-action = 0 [
+    if years-elapsed > 20 [ set agri-intensity min list 2 (agri-intensity + 1) ]
+  ]
   if agri-action = 2 [ set agri-intensity max list 0 (agri-intensity - 1) ]
   if agri-action >= 3 [ set agri-intensity max list 0 (agri-intensity - 2) ]
 
   let graz-action floor community-grazing-level
+  if graz-action = 0 [
+    if years-elapsed > 20 [ set grazing-intensity min list 2 (grazing-intensity + 1) ]
+  ]
   if graz-action = 2 [ set grazing-intensity max list 0 (grazing-intensity - 1) ]
   if graz-action >= 3 [ set grazing-intensity max list 0 (grazing-intensity - 2) ]
+
 end
 
 ;; ---------------------------------------------------------------
 ;; ECOSYSTEM STATUS
 ;; ---------------------------------------------------------------
 to update-ecosystem-status
-  ;; Uses equally-weighted normalised BI (see report-total-biodiversity-raw).
-  ;; Thresholds 80/120 are symmetrical assumptions; test 75/125 in sensitivity.
-  let bi report-total-biodiversity-raw
+  let bio report-total-biodiversity-raw
   set ecosystem-status (ifelse-value
-    bi < 80  [ 0 ]
-    bi <= 120 [ 1 ]
+    bio < 75   [ 0 ]
+    bio <= 130 [ 1 ]
     [ 2 ])
 end
 
@@ -481,114 +510,95 @@ end
 ;; ---------------------------------------------------------------
 to update-species-populations
 
-  ;; Multiplicative ecosystem feedback (±10 % on r, not ±0.05 additive).
-  ;; Adding 0.05 to r was not equivalent to 5 %; for bears it nearly doubled growth.
-  let eco-mult (ifelse-value
-    ecosystem-status = 0 [ 0.90 ]
-    ecosystem-status = 1 [ 1.00 ]
-    [ 1.10 ])
+  let eco-mod (ifelse-value
+    ecosystem-status = 0 [ -0.05 ]
+    ecosystem-status = 1 [  0.00 ]
+    [  0.05 ])
 
-  ;; Patrol effectiveness — multiplicative residual-pressure multiplier.
-  ;; None→×1.00, Low→×0.90, Med→×0.60, High→×0.30 (proxy; test ±20pp)
-  let eff-patrol min list 3 (floor community-patrol-level + ranger-patrol-level)
-  let patrol-mult (ifelse-value
-    eff-patrol >= 3 [ 0.30 ]
-    eff-patrol = 2  [ 0.60 ]
-    eff-patrol = 1  [ 0.90 ]
-    [ 1.00 ])
-
-  ;; Ungulate grazing competition (reduced planting/grazing values per audit)
   let graz-competition (ifelse-value
-    community-grazing-level >= 2.5 [ 0.010 ]
-    community-grazing-level >= 1.5 [ 0.005 ]
-    [ 0 ])
+    community-grazing-level >= 2.5 [ -0.02 ]
+    community-grazing-level >= 1.5 [  0.00 ]
+    [  0.01 ])
 
-  ;; Planting boost on broadleaf (percentage-point additions reduced per audit)
   let plant-boost (ifelse-value
-    community-planting-level >= 2.5 [ 0.020 ]
-    community-planting-level >= 1.5 [ 0.010 ]
-    community-planting-level >= 0.5 [ 0.005 ]
+    community-planting-level >= 2.5 [ 0.04 ]
+    community-planting-level >= 1.5 [ 0.02 ]
+    community-planting-level >= 0.5 [ 0.01 ]
     [ 0 ])
 
-  ;; Self-sustenance ecological benefit (beekeeping / eco-tourism)
-  ;; Reduced from 0.01 — no direct biodiversity mechanism; kept as habitat-quality proxy
+  ;; Non-target: planting + beekeeping/habitat quality boost
   let selfsustain-eco-boost (ifelse-value
-    (agreement-selfsustain-incentive? and scenario = 2) [ 0.005 ] [ 0 ])
+    (agreement-selfsustain-incentive? and scenario = 2) [ 0.01 ] [ 0 ])
 
-  ;; ── Species equations: N + r·eco_mult·(1-N/K)·N − kill·patrol_mult·N ──
-  let k-nt ((hunt-to-kill-rate hunt-nontarget) * patrol-mult + agri-to-mortality agri-intensity)
+  let k-nt (hunt-to-kill-rate hunt-nontarget + agri-to-mortality agri-intensity)
   set pop-nontarget max list 0 (
     pop-nontarget
-    + pop-nontarget * (r-nontarget + selfsustain-eco-boost) * eco-mult
+    + pop-nontarget * (r-nontarget + eco-mod + selfsustain-eco-boost)
       * (1 - pop-nontarget / K-nontarget)
     - pop-nontarget * k-nt
   )
 
-  let k-ch ((hunt-to-kill-rate hunt-chamois) * patrol-mult)
+  let k-ch (hunt-to-kill-rate hunt-chamois)
   set pop-chamois max list 0 (
     pop-chamois
-    + pop-chamois * r-chamois * eco-mult * (1 - pop-chamois / K-chamois)
+    + pop-chamois * (r-chamois + eco-mod) * (1 - pop-chamois / K-chamois)
     - pop-chamois * k-ch
     - pop-chamois * graz-competition
   )
 
-  let k-br ((hunt-to-kill-rate hunt-bear) * patrol-mult)
+  let k-br (hunt-to-kill-rate hunt-bear)
   set pop-bear max list 0 (
     pop-bear
-    + pop-bear * r-bear * eco-mult * (1 - pop-bear / K-bear)
+    + pop-bear * (r-bear + eco-mod) * (1 - pop-bear / K-bear)
     - pop-bear * k-br
   )
 
-  let k-de ((hunt-to-kill-rate hunt-deer) * patrol-mult)
+  let k-de (hunt-to-kill-rate hunt-deer)
   set pop-deer max list 0 (
     pop-deer
-    + pop-deer * r-deer * eco-mult * (1 - pop-deer / K-deer)
+    + pop-deer * (r-deer + eco-mod) * (1 - pop-deer / K-deer)
     - pop-deer * k-de
     - pop-deer * graz-competition
   )
-
-  let k-bf ((log-to-kill-rate log-broadleaf) * patrol-mult)
+;; Broadleaf
+  let k-bf (log-to-kill-rate log-broadleaf)
   set pop-broadleaf max list 0 (
     pop-broadleaf
-    + pop-broadleaf * (r-broadleaf + plant-boost) * eco-mult
+    + pop-broadleaf * (r-broadleaf + eco-mod + plant-boost)
       * (1 - pop-broadleaf / K-broadleaf)
     - pop-broadleaf * k-bf
   )
 
-  ;; S4: investor-driven habitat degradation — 1 %/yr central (6 % was extreme stress test)
-  ;; No initial population shock: all scenarios start from same baseline.
+  ;; Sc4: habitat fragmentation da privatizzazione
   if scenario = 4 [
-    let habitat-loss 0.01
+    let habitat-loss 0.06
     set pop-nontarget  max list 0 (pop-nontarget  - pop-nontarget  * habitat-loss)
     set pop-chamois    max list 0 (pop-chamois    - pop-chamois    * habitat-loss)
     set pop-bear       max list 0 (pop-bear       - pop-bear       * habitat-loss)
-    set pop-deer       max list 0 (pop-deer       - pop-deer       * habitat-loss)
-    set pop-broadleaf  max list 0 (pop-broadleaf  - pop-broadleaf  * habitat-loss)
+    set pop-deer       max list 0 (pop-deer       - pop-deer       * habitat-loss * 0.5)
+    set pop-broadleaf  max list 0 (pop-broadleaf  - pop-broadleaf  * habitat-loss * 0.3)
   ]
 end
 
-;; Kill rates revised per audit: intensity=0 must mean zero pressure (protected/banned).
-;; Previous: 0→3%/1% hunt/log mortality even with full ban — ecological inconsistency.
-;; Recommended central: 0%, 2%, 5%, 12% hunting; 0%, 0.5%, 2%, 6% logging.
 to-report hunt-to-kill-rate [ intensity ]
-  if intensity = 0 [ report 0.000 ]   ;; no hunting / full ban
-  if intensity = 1 [ report 0.020 ]   ;; low subsistence hunting
-  if intensity = 2 [ report 0.050 ]   ;; medium — BAU baseline
-  report 0.120                         ;; high — severe poaching stress test
+  if intensity = 0 [ report 0.03 ]
+  if intensity = 1 [ report 0.08 ]
+  if intensity = 2 [ report 0.18 ]
+  report 0.08
 end
 
 to-report log-to-kill-rate [ intensity ]
-  if intensity = 0 [ report 0.000 ]   ;; no logging / full ban
-  if intensity = 1 [ report 0.005 ]   ;; low
-  if intensity = 2 [ report 0.020 ]   ;; medium — BAU
-  report 0.060                         ;; high
+  if intensity = 0 [ report 0.01 ]
+  if intensity = 1 [ report 0.04 ]
+  if intensity = 2 [ report 0.10 ]
+  report 0.04
 end
 
 to-report agri-to-mortality [ intensity ]
-  if intensity = 0 [ report 0.000 ]   ;; no agriculture pressure
-  if intensity = 1 [ report 0.015 ]   ;; low
-  if intensity = 2 [ report 0.040 ]   ;; medium — BAU
-  report 0.060                         ;; high
+  if intensity = 0 [ report 0.01 ]
+  if intensity = 1 [ report 0.03 ]
+  if intensity = 2 [ report 0.06 ]
+  report 0.03
 end
 
 ;; ---------------------------------------------------------------
@@ -696,9 +706,8 @@ end
 ;; HUMAN POPULATION
 ;; ---------------------------------------------------------------
 to update-human-population
-  ;; Net natural change: −0.3 %/yr (ageing population, low birth rate — Georgia census).
-  ;; Previous +0.8 % net growth was inconsistent with declining mountain municipality data.
-  let base-growth -0.003
+
+  let base-growth 0.008
   let edu-mod   (ifelse-value (agreement-education? and scenario = 2) [ 0.002 ] [ 0 ])
   let merge-mod (ifelse-value community-plot-merging-level > 1.5 [ 0.001 ] [ 0 ])
 
@@ -720,23 +729,19 @@ end
 to maybe-emigrate
   let effective-prob prob-to-leave
 
-  ;; Livelihood / income effects
   if income-growth > 105 [ set effective-prob effective-prob * 0.5  ]
   if income-growth > 115 [ set effective-prob effective-prob * 0.3  ]
   if income-growth < 90  [ set effective-prob min list 1 (effective-prob * 1.5) ]
   if income-growth < 75  [ set effective-prob min list 1 (effective-prob * 2.5) ]
 
-  ;; Ecosystem degradation raises emigration pressure
   if ecosystem-status = 0 [
     set effective-prob min list 1 (effective-prob + 0.015)
   ]
 
-  ;; Removed: years-elapsed * 0.003 annual escalation (added 15 pp by year 50;
-  ;; no empirical basis for fixed-date escalation; long-run effects should
-  ;; emerge from livelihood and demographic conditions instead).
+  set effective-prob min list 1 (effective-prob + years-elapsed * 0.003)
 
-  ;; Removed: S3 × 1.4 and S4 × 2.0 multipliers (land-access loss and livelihood
-  ;; effects are already captured; a scenario label multiplier double-counts the mechanism).
+  if scenario = 3 [ set effective-prob min list 1 (effective-prob * 1.4) ]
+  if scenario = 4 [ set effective-prob min list 1 (effective-prob * 2.0) ]
 
   if random-float 1.0 < effective-prob [
     set has-emigrated? true
@@ -748,16 +753,9 @@ end
 ;; REPORTERS
 ;; ---------------------------------------------------------------
 to-report report-total-biodiversity-raw
-  ;; Equally-weighted normalised index: each species contributes 20 % regardless
-  ;; of absolute population size. Previous raw-sum let deer (47 %) dominate and
-  ;; bear (5 %) barely register. Baseline = 100; below 80 = low, above 120 = high.
-  report (
-    (pop-deer      / raw-start-deer)
-    + (pop-chamois / raw-start-chamois)
-    + (pop-bear    / raw-start-bear)
-    + (pop-broadleaf / raw-start-broadleaf)
-    + (pop-nontarget / raw-start-nontarget)
-  ) / 5 * 100
+  let raw-sum   (pop-nontarget + pop-chamois + pop-bear + pop-deer + pop-broadleaf)
+  let start-sum (raw-start-nontarget + raw-start-chamois + raw-start-bear + raw-start-deer + raw-start-broadleaf)
+  report (raw-sum / start-sum) * 100
 end
 
 to-report report-pop-deer
@@ -791,12 +789,30 @@ to-report report-human-pop-indexed
   report (human-pop / human-start-pop) * 100
 end
 to-report report-emigration-rate
-  ;; Reports actual departures / population-at-start-of-tick × 100 (%/yr).
-  ;; Previous formula was a disconnected synthetic equation starting at 8 %
-  ;; and growing by 0.12 pts/yr regardless of modelled behaviour.
-  ifelse human-pop-at-tick-start > 0
-    [ report min list 100 (emigrants-this-year / human-pop-at-tick-start * 100) ]
-    [ report 0 ]
+  let base-rate 8.0
+
+  ;; Secular trend solo se income NON sta crescendo
+  let secular-trend (ifelse-value
+    community-income-index > 105 [ 0 ]
+    [ years-elapsed * 0.12 ])
+
+  let income-effect (ifelse-value
+    community-income-index > 150 [ -5.0 ]
+    community-income-index > 120 [ -3.0 ]
+    community-income-index > 105 [ -1.0 ]
+    community-income-index < 75  [  6.0 ]
+    community-income-index < 90  [  3.0 ]
+    [ 0 ])
+
+  let eco-effect (ifelse-value ecosystem-status = 0 [ 2.5 ] [ 0 ])
+
+  let scenario-effect (ifelse-value
+    scenario = 3 [  4.0 ]
+    scenario = 4 [ 10.0 ]
+    [ 0 ])
+
+  report min list 40 max list 0
+    (base-rate + secular-trend + income-effect + eco-effect + scenario-effect)
 end
 to-report report-pct-accepted
   let actives count humans with [ is-active? and not has-emigrated? ]
@@ -934,7 +950,7 @@ end
     <switch x="265" y="480" height="40" on="false" variable="agreement-marginal-loss-incentive?" width="235" display="agreement-marginal-loss-incentive?"></switch>
     <switch x="20" y="480" height="40" on="false" variable="agreement-action-incentive?" width="235" display="agreement-action-incentive?"></switch>
     <slider x="20" step="1" y="155" max="50" width="480" display="simulation-years" height="50" min="10" direction="Horizontal" default="50.0" variable="simulation-years"></slider>
-    <slider x="260" step="1" y="90" max="50" width="240" display="agreement-duration" height="50" min="0" direction="Horizontal" default="10.0" variable="agreement-duration"></slider>
+    <slider x="260" step="1" y="90" max="50" width="240" display="agreement-duration" height="50" min="0" direction="Horizontal" default="25.0" variable="agreement-duration"></slider>
     <slider x="20" step="1" y="90" max="4" width="230" display="scenario" height="50" min="1" direction="Horizontal" default="2.0" variable="scenario"></slider>
     <switch x="20" y="375" height="40" on="true" variable="agreement-grazing-reduction?" width="235" display="agreement-grazing-reduction?"></switch>
     <switch x="20" y="325" height="40" on="true" variable="agreement-planting?" width="235" display="agreement-planting?"></switch>
