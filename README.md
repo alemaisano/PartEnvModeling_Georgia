@@ -398,13 +398,8 @@ behaviour is a known limitation and a priority area for future revision.
 
 ## Minimum analysis before interpreting results
 
-<<<<<<< HEAD
-Run ≥ 100 stochastic repetitions per scenario; report median and 5th–95th percentile range.
-Priority sensitivity parameters ([Ligmann-Zielinska et al. 2020, *JASSS* 23(1):6](https://www.jasss.org/23/1/6.html)):
-=======
 Run multiple stochastic repetitions per scenario; report median and 5th–95th percentile range.
-Priority sensitivity parameters (Ligmann-Zielinska et al. 2020, *JASSS* 23(1):6, jasss.org/23/1/6):
->>>>>>> 4affbcc5ab8b9ea6c3889cb158fe90d1ce2145f5
+Priority sensitivity parameters ([Ligmann-Zielinska et al. 2020, *JASSS* 23(1):6](https://www.jasss.org/23/1/6.html)):
 
 1. Baseline emigration probability (mean and SD) — and whether formula or agent behaviour is used
 2. WTA distribution and agreement-attribute effects (vary all ±50 %)
