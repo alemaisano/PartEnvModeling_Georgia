@@ -196,21 +196,11 @@ to apply-scenario-setup
   ]
 
   if scenario = 4 [
-  set rangers-active?     false
-  set investor-active?    true
-  set ecosystem-status    0
-  set hunt-nontarget 0  set hunt-chamois 0
-  set hunt-bear      0  set hunt-deer    0
-  set log-broadleaf  0
-  set agri-intensity 0  set grazing-intensity 0
-
-  ;; Popolazioni già degradate al momento della privatizzazione
-  set pop-chamois    (pop-chamois    * 0.5)
-  set pop-bear       (pop-bear       * 0.5)
-  set pop-deer       (pop-deer       * 0.5)
-  set pop-broadleaf  (pop-broadleaf  * 0.6)
-  set pop-nontarget  (pop-nontarget  * 0.5)
-]
+    set rangers-active?  false
+    set investor-active? true
+    ;; All scenarios start from identical ecological baseline.
+    ;; S4 diverges gradually through habitat-loss each tick (not a cliff at t=0).
+  ]
 
 end
 
@@ -519,9 +509,13 @@ end
 to update-species-populations
 
   let eco-mod (ifelse-value
-    ecosystem-status = 0 [ -0.05 ]
+    ecosystem-status = 0 [ -0.03 ]
     ecosystem-status = 1 [  0.00 ]
-    [  0.05 ])
+    [  0.03 ])
+
+  ;; Heritage of pre-existing conservation: kill pressure builds from near-zero over 7 years,
+  ;; producing initial slow species growth before scenario dynamics take over.
+  let heritage-kill-mult (min list 1.0 (years-elapsed / 7.0))
 
   let graz-competition (ifelse-value
     community-grazing-level >= 2.5 [ -0.02 ]
@@ -538,60 +532,59 @@ to update-species-populations
   let selfsustain-eco-boost (ifelse-value
     (agreement-selfsustain-incentive? and scenario = 2) [ 0.01 ] [ 0 ])
 
-  ;; Index bounds: species index clamped to 30–200 % of starting population
-  let lo-nt  (0.30 * raw-start-nontarget)   let hi-nt  (2.0 * raw-start-nontarget)
-  let lo-ch  (0.30 * raw-start-chamois)     let hi-ch  (2.0 * raw-start-chamois)
-  let lo-br  (0.30 * raw-start-bear)        let hi-br  (2.0 * raw-start-bear)
-  let lo-de  (0.30 * raw-start-deer)        let hi-de  (2.0 * raw-start-deer)
-  let lo-bf  (0.30 * raw-start-broadleaf)   let hi-bf  (2.0 * raw-start-broadleaf)
-
-  let k-nt (hunt-to-kill-rate hunt-nontarget + agri-to-mortality agri-intensity)
-  set pop-nontarget max list lo-nt min list hi-nt (
+  ;; Kill rates scaled by heritage factor; stochastic wobble (1 % SD) added per species
+  let k-nt ((hunt-to-kill-rate hunt-nontarget + agri-to-mortality agri-intensity) * heritage-kill-mult)
+  set pop-nontarget max list 0 (
     pop-nontarget
     + pop-nontarget * (r-nontarget + eco-mod + selfsustain-eco-boost + plant-boost)
       * (1 - pop-nontarget / K-nontarget)
     - pop-nontarget * k-nt
+    + pop-nontarget * random-normal 0 0.010
   )
 
-  let k-ch (hunt-to-kill-rate hunt-chamois)
-  set pop-chamois max list lo-ch min list hi-ch (
+  let k-ch ((hunt-to-kill-rate hunt-chamois) * heritage-kill-mult)
+  set pop-chamois max list 0 (
     pop-chamois
     + pop-chamois * (r-chamois + eco-mod) * (1 - pop-chamois / K-chamois)
     - pop-chamois * k-ch
     - pop-chamois * graz-competition
+    + pop-chamois * random-normal 0 0.010
   )
 
-  let k-br (hunt-to-kill-rate hunt-bear)
-  set pop-bear max list lo-br min list hi-br (
+  let k-br ((hunt-to-kill-rate hunt-bear) * heritage-kill-mult)
+  set pop-bear max list 0 (
     pop-bear
     + pop-bear * (r-bear + eco-mod) * (1 - pop-bear / K-bear)
     - pop-bear * k-br
+    + pop-bear * random-normal 0 0.010
   )
 
-  let k-de (hunt-to-kill-rate hunt-deer)
-  set pop-deer max list lo-de min list hi-de (
+  let k-de ((hunt-to-kill-rate hunt-deer) * heritage-kill-mult)
+  set pop-deer max list 0 (
     pop-deer
     + pop-deer * (r-deer + eco-mod) * (1 - pop-deer / K-deer)
     - pop-deer * k-de
     - pop-deer * graz-competition
+    + pop-deer * random-normal 0 0.010
   )
 
-  let k-bf (log-to-kill-rate log-broadleaf)
-  set pop-broadleaf max list lo-bf min list hi-bf (
+  let k-bf ((log-to-kill-rate log-broadleaf) * heritage-kill-mult)
+  set pop-broadleaf max list 0 (
     pop-broadleaf
     + pop-broadleaf * (r-broadleaf + eco-mod + plant-boost)
       * (1 - pop-broadleaf / K-broadleaf)
     - pop-broadleaf * k-bf
+    + pop-broadleaf * random-normal 0 0.010
   )
 
-  ;; Sc4: habitat fragmentation — bounds still apply
+  ;; S4: gradual habitat degradation from privatisation (3 %/yr; no initial population cut)
   if scenario = 4 [
-    let habitat-loss 0.06
-    set pop-nontarget  max list lo-nt (pop-nontarget  - pop-nontarget  * habitat-loss)
-    set pop-chamois    max list lo-ch (pop-chamois    - pop-chamois    * habitat-loss)
-    set pop-bear       max list lo-br (pop-bear       - pop-bear       * habitat-loss)
-    set pop-deer       max list lo-de (pop-deer       - pop-deer       * habitat-loss * 0.5)
-    set pop-broadleaf  max list lo-bf (pop-broadleaf  - pop-broadleaf  * habitat-loss * 0.3)
+    let habitat-loss 0.03
+    set pop-nontarget  max list 0 (pop-nontarget  - pop-nontarget  * habitat-loss)
+    set pop-chamois    max list 0 (pop-chamois    - pop-chamois    * habitat-loss)
+    set pop-bear       max list 0 (pop-bear       - pop-bear       * habitat-loss)
+    set pop-deer       max list 0 (pop-deer       - pop-deer       * habitat-loss)
+    set pop-broadleaf  max list 0 (pop-broadleaf  - pop-broadleaf  * habitat-loss)
   ]
 end
 

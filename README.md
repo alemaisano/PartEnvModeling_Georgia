@@ -164,11 +164,16 @@ ungulate dynamics; bear trajectories are largely invisible in the aggregate.
 This weighting choice is a known limitation: consider disaggregated species-level charts for
 bear and broadleaf when interpreting results.
 Ecosystem status thresholds: Low < 75, Medium 75–130, High > 130.
+Ecosystem-status growth modifier is ±0.03 additive to r (±3 % effect); previously ±0.05
+which produced ±100 % effect on bears (r = 0.05) — now less harsh and more symmetric.
 
-**Species index bounds:** Each species population is clamped to 30–200 % of its starting value
-(i.e. the index shown in charts never goes below 30 or above 200). The lower bound represents
-a minimum viable population floor given model uncertainty; the upper bound prevents ecologically
-implausible recovery beyond double the starting abundance within the modelled time horizon.
+**Heritage effect:** In years 1–7, extraction kill rates scale up linearly from near-zero to
+their full BAU values. This represents the tail of pre-existing ECF conservation practices:
+species show initial slow growth at simulation start, with trajectories diverging as scenario
+governance structures take over after year 7.
+
+**Annual stochastic noise:** Each species receives a ±1 % (SD) multiplicative stochastic shock
+each tick, producing realistic year-to-year variation around the underlying trend.
 
 ### Pressure parameters [H informed by L/X]
 
@@ -232,12 +237,13 @@ scenario-level variation beyond the intended Monte Carlo parameter uncertainty.
 
 ### Privatisation scenario (S4) [H]
 
-S4 starts with populations already reduced: chamois, bear, deer, and non-target at 50 % of
-baseline; broadleaf at 60 % of baseline. This represents a partially degraded corridor at the
-point of privatisation. Habitat loss then continues at 6 %/yr (×0.5 for deer, ×0.3 for broadleaf).
-The 50 % initial cut and 6 %/yr degradation rate are both heuristic; the 6 %/yr rate in particular
-is very high and produces near-collapse dynamics within 15–20 years regardless of other parameters.
-Test 1–3 %/yr habitat loss as a more moderate central estimate.
+All scenarios start from identical ecological initial conditions. S4 diverges through gradual
+habitat degradation of 3 %/yr applied to all species each tick (representing fragmentation and
+reduced habitat quality from investor activities). The previous design pre-cut populations by 50 %
+at setup, which produced an immediate cliff in the charts and predetermined results before any
+dynamics could play out. With a common baseline and 3 %/yr degradation, S4 diverges naturally
+over time while remaining comparable to other scenarios at t = 0.
+Test 1–6 %/yr habitat loss in sensitivity analysis.
 
 ### Protected area scenario (S3)
 
