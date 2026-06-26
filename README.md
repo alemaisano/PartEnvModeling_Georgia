@@ -104,7 +104,7 @@ sensitivity analysis before conclusions are drawn.
 population declines of approximately −3.5 %/yr in Khulo and −3.0 %/yr in Shuakhevi between
 2014 and 2024 ([Geostat 2024 Population Census](https://geostat.ge)). The current +0.8 %/yr natural-growth assumption
 is inconsistent with this trend; all demographic outputs should be treated as indicative only.
-This is a known limitation and a priority parameter for sensitivity analysis.
+This is a known limitation and a priority parameter for sensitivity analysis. 
 
 **Parameter sources and accuracy:**
 
