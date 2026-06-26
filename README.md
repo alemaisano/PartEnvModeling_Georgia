@@ -2,15 +2,17 @@
 
 Interactive simulation and decision-support tool built around the
 **NetLogo Corridor Governance Model v6** (`Nlogo_final_model.nlogox`),
-modelling community-led conservation governance in rural Georgia.
+modelling community-led conservation governance in rural Georgia (South Caucasus).
 
 **Live app:** https://partenvmodgeorgia.streamlit.app/
+
+> **Important:** This model is an exploratory scenario-comparison tool, not a forecast.
+> Parameters marked as heuristic assumptions (see evidence codes below) should be varied
+> in sensitivity analysis before interpreting differences between scenarios.
 
 ---
 
 ## What the app does
-
-The app wraps the NetLogo ABM in a three-page Streamlit interface:
 
 | Page | Purpose |
 |------|---------|
@@ -18,10 +20,9 @@ The app wraps the NetLogo ABM in a three-page Streamlit interface:
 | **Parameters** | Edit ecological & socioeconomic parameters; define Monte Carlo uncertainty distributions |
 | **MCDA** | Multi-criteria ranking of experiments; sensitivity to weights |
 
-Every simulation is a **Monte Carlo ensemble**: each experiment runs N times
-with parameters sampled from user-defined distributions (Uniform / Normal / Triangular).
-Results are displayed as **10–90 %** (outer) and **25–75 %** (inner) percentile bands
-around the median.
+Every simulation is a **Monte Carlo ensemble**: each experiment runs N times with parameters
+sampled from user-defined distributions (Uniform / Normal / Triangular).
+Results are displayed as 10–90 % (outer) and 25–75 % (inner) percentile bands around the median.
 
 ---
 
@@ -32,10 +33,7 @@ around the median.
 | **S1** | Business as Usual | No governance intervention; baseline ecosystem trajectory |
 | **S2** | Voluntary ECF Agreement | Participatory agreement with 12 configurable policy switches |
 | **S3** | State-Led Conservation | Mandatory extraction ban imposed from year 2 |
-| **S4** | Private Investment | Corridor privatised; ecosystem starts degraded |
-
-Multiple S2 variants (different switch combinations) can be built, queued, and
-run simultaneously for side-by-side comparison.
+| **S4** | Private Investment | Corridor privatised; ecosystem starts in a degraded state |
 
 ### S2 policy switches
 
@@ -49,7 +47,7 @@ run simultaneously for side-by-side comparison.
 | Marginal loss incentive | Cash transfer: income +1.0/yr |
 | Action incentive | Bonus per action: income +0.8/yr, action level +1 |
 | Predator compensation | Prevents WTA erosion from bear damage |
-| Land tenure security | WTA boost +0.10 initial, +0.02/yr |
+| Land tenure security | WTA boost +0.10 initial; +0.02/yr cumulative |
 | Grazing reduction | Reduces grazing — aids ungulate recovery |
 | Community planting | Boosts broadleaf forest cover |
 | Plot merging | Land consolidation: income +0.5–5.0/yr |
@@ -61,37 +59,205 @@ run simultaneously for side-by-side comparison.
 ### Simulate
 
 1. **Reference scenarios** — tick S1, S3, S4 to include them as baselines.
-2. **Scenario 2 builder** — load a preset (Incentives / Financial / Full package…)
-   or toggle switches manually. Name the variant and click **+ Add to run list**.
-   Repeat to queue multiple S2 variants.
-3. **Run settings** — set simulation years (10–50), agreement duration, and
-   number of MC runs per experiment (3–100).
-4. Click **▶ Run** — all experiments run in parallel with Monte Carlo sampling.
+2. **Scenario 2 builder** — load a preset or toggle switches manually. Name the variant and click **+ Add to run list**.
+3. **Run settings** — set simulation years (10–50), agreement duration (default 25 yrs), and MC runs (3–100).
+4. Click **▶ Run** — all experiments run with Monte Carlo sampling.
 5. Results appear as time-series charts (6 dashboard metrics + target species).
-   Use the legend to isolate scenarios; double-click to focus on one.
 
 ### Parameters
 
-Edit the 21 ecological and socioeconomic parameters (growth rates, carrying
-capacities, initial populations, baseline management).  
-For each parameter you can enable **uncertainty**: choose a distribution
-(Uniform, Normal, Triangular) and set its bounds — the parameter is then
-sampled fresh in every MC run.
+Edit ecological, agent-behaviour, and income-model parameters.
+Enable **Uncertain?** on any parameter to sample it from a distribution in every MC run.
+Agent-behaviour params are sampled before setup; income coefficients are applied after setup.
 
 ### MCDA
 
-Requires ≥ 2 experiments from the last simulation run.
+Requires ≥ 2 experiments. Assign weights (auto-renormalized to 100) to 9 criteria.
+Charts: weighted ranking · radar · score profile per criterion · ranking across criteria ·
+Dirichlet weight sensitivity · per-criterion weight sweep showing how score changes as
+each criterion's weight varies 0–100 %.
 
-1. **Weights** (sidebar) — assign a weight 0–100 to each of the 9 criteria.
-   Criteria with weight 0 are excluded.
-2. **Ranking table + bar chart** — weighted-sum scores and ranks.
-3. **Radar chart** — per-criterion normalised scores at a glance.
-4. **Score profile** — parallel-coordinates chart showing each scenario's
-   normalised score on every criterion, with MC uncertainty bands.
-5. **Ranking across criteria** — bump chart: rank of each scenario per criterion,
-   revealing trade-offs.
-6. **Weight sensitivity** — 1 000 Dirichlet-sampled weight vectors; shows how
-   often each scenario ranks #1 and #2 across random weight draws.
+---
+
+## Model parameterisation and data sources
+
+Parameters follow a four-level evidence hierarchy:
+**L** = direct local/case-study evidence · **R** = Georgian/Caucasus regional ·
+**X** = external transferable experience · **H** = heuristic/modelling assumption.
+
+Parameters classified as **H** are exploratory and their magnitudes should be varied in
+sensitivity analysis before conclusions are drawn.
+
+### Demographic parameters
+
+| Parameter | Value | Evidence | Source / rationale |
+|-----------|-------|----------|--------------------|
+| Net natural population change | +0.008/yr | H | Assumed positive growth; contradicts recent Georgian census data showing mountain-municipality decline — flagged for revision |
+| Baseline emigration prob. (μ) | 0.08 | H | Heuristic prior; no local calibration data |
+| Baseline emigration SD | 0.05 | H | Heuristic; captures heterogeneity in mobility |
+| WTA mean | 0.45 | H | Heuristic prior; local survey data needed |
+| WTA SD | 0.20 | H | Higher values increase clamping artefacts at 0/1 boundaries |
+
+**Note on demographic calibration:** The 2024 Georgian national census records compound annual
+population declines of approximately −3.5 %/yr in Khulo and −3.0 %/yr in Shuakhevi between
+2014 and 2024 (Geostat 2024 Population Census). The current +0.8 %/yr natural-growth assumption
+is inconsistent with this trend; all demographic outputs should be treated as indicative only.
+This is a known limitation and a priority parameter for sensitivity analysis.
+
+### Ecological parameters
+
+| Species | Initial pop. | K | r (central) | Sensitivity range | Evidence |
+|---------|-------------|---|-------------|------------------|---------|
+| Red deer | 400 | 1 200 | 0.11 | 0.05–0.20 | L / R / X |
+| Chamois | 200 (proxy) | 600 | 0.10 | 0.04–0.18 | L / R / X |
+| Brown bear | 40 | 120 | 0.05 | 0.02–0.10 | L / X |
+| Broadleaf forest | 100 (index) | 200 | 0.03 | 0.01–0.08 | R / X |
+| Non-target biodiversity | 100 (index) | 200 | 0.06 | 0.02–0.12 | H |
+
+**Red deer — 400 individuals, K = 1 200, r = 0.11 [L/R/X]**
+Initial population consistent with survey estimates of 325–527 individuals in and around
+Borjomi-Kharagauli National Park (NACRES/WWF habitat and species mapping, Western Lesser Caucasus).
+r = 0.11 is an upper-range estimate of the intrinsic growth rate, intended to produce near-stable
+dynamics at BAU hunting pressure; a recovering Caspian red-deer population showed an observed net
+trend of ≈2.2 %/yr (Salmanpour et al. 2025, *Population Dynamics and Ecology of the Caspian Red
+Deer*, PMC12276821). Note: observed net trend ≠ intrinsic r; the logistic model's r is the
+biological potential before mortality and density dependence. The central estimate should be
+varied in the range 0.05–0.20 in sensitivity analysis.
+
+**Chamois — 200 proxy, K = 600, r = 0.10 [L/R/X]**
+No reliable corridor-specific abundance estimate; 200 is a scaled proxy informed by wider
+Lesser Caucasus estimates (NACRES/WWF). Treated as highly uncertain; vary in sensitivity analysis.
+
+**Brown bear — 40 individuals, K = 120, r = 0.05 [L/X]**
+Initial population derived from locally reported density of 1.9–2.3 bears/100 km² in
+Borjomi-Kharagauli (NACRES/WWF) applied to the priority-site network area (≈1 965 km²).
+K = 120 implies ≈6.1 bears/100 km²; this is above local density and represents a recovery target
+rather than a baseline — treating it as a target carrying capacity, not a current equilibrium.
+Growth rate based on recovering European brown bear populations (≈4–5 %/yr;
+Swenson et al., *Monitoring and Management of the Swedish Brown Bear*, SLU, epsilon.slu.se/201058.pdf).
+
+**Broadleaf forest — index baseline 100, K = 200, r = 0.03 [R/X]**
+Modelled as a habitat-quality composite index, not a literal tree count.
+K = 200 implies doubling above baseline — more a policy aspiration than a current carrying capacity.
+FAO *Global Forest Resources Assessment 2025* (openknowledge.fao.org) provides reference for
+regional forest dynamics; r = 0.03 is in the upper range for area-based change and more
+appropriate for a quality/density index under active restoration.
+
+**Non-target biodiversity — K = 200, r = 0.06 [H]**
+Composite placeholder for all non-focal species; parameter is entirely heuristic.
+Vary 0.02–0.12 in sensitivity analysis.
+
+**Biodiversity index [H]**
+Raw-sum index: (total current pop.) / (total initial pop.) × 100, so each species is weighted
+by its absolute population size. This means deer (population 400) determines a much larger share
+of the index than bear (population 40). Scenario comparisons on this index are dominated by
+ungulate dynamics; bear trajectories are largely invisible in the aggregate.
+This weighting choice is a known limitation: consider disaggregated species-level charts for
+bear and broadleaf when interpreting results.
+Ecosystem status thresholds: Low < 75, Medium 75–130, High > 130.
+
+### Pressure parameters [H informed by L/X]
+
+Local evidence supports the direction of threats (hunting, logging, grazing, disturbance);
+exact annual removal percentages are not documented (NACRES/WWF threat assessment).
+These rates are the largest source of uncertainty in the model.
+
+| Intensity level | Hunting mortality | Logging mortality | Agricultural pressure |
+|-----------------|------------------|------------------|-----------------------|
+| 0 — none | 3.0 % | 1.0 % | 1.0 % |
+| 1 — low (subsistence) | 8.0 % | 4.0 % | 3.0 % |
+| 2 — medium (BAU) | 18.0 % | 10.0 % | 6.0 % |
+
+**Note:** Intensity = 0 produces non-zero mortality (3 % hunting, 1 % logging, 1 % agriculture).
+This represents residual background pressure even under a nominal ban, and means the S3
+protected-area scenario retains some ecological pressure throughout. Whether this is realistic
+depends on actual enforcement capacity; vary intensity-0 rates across 0–3 % in sensitivity analysis.
+
+**Patrol effectiveness** modifies the categorical hunt-intensity level directly:
+Low patrol (+0/−0 depending on year), Medium patrol (−1 level), High patrol (−2 levels).
+After year 20 without active patrol (level 0), intensity escalates by +1 level (pressure creep).
+Evidence supports patrol deterrence effects (Critchlow et al. 2022, *Conservation Science and
+Practice*, DOI:10.1111/csp2.12746), though spatial allocation and displacement effects are not
+captured in this non-spatial model.
+
+**Agriculture/grazing intensity** similarly escalates +1 level after year 20 if community
+action level is 0. This represents gradual encroachment without governance pressure, treated
+as a heuristic long-run trend.
+
+### Conservation agreement parameters [L / X / H]
+
+**Agreement duration: 25 years** (model default).
+ECF's documented programme uses 10-year conservation agreements
+(Eco Corridor Foundation, ecocorridorscaucasus.org). The 25-year default is more pessimistic
+about renewal dynamics; test 10 and 20 years in sensitivity analysis.
+
+WTA adjustment **directions** are supported by the conservation contract literature;
+**exact magnitudes are exploratory**. Compensation, tenure, obligations, duration and flexibility
+all influence participation (Greiner 2015, *Agricultural Systems* 137:154–165,
+ideas.repec.org/a/eee/agisys/v137y2015). Tenure security supports stable participation
+(*Ecology and Society* 28(1):13, ecologyandsociety.org).
+All WTA coefficients should be varied ±50 % in sensitivity analysis.
+
+**Land tenure:** +0.10 one-time boost at initialisation plus +0.02/yr cumulative annual increase.
+The cumulative annual term has no empirical upper bound specified and grows without limit over
+a 50-year run; this is a known limitation. Consider clamping or removing the annual term
+in sensitivity testing.
+
+**Random investor in S2:** When the simulation begins, an investor is introduced with
+probability p = 0.6. This means two runs of an identical S2 scenario can produce systematically
+different outcomes (with vs. without investor). This design choice introduces stochastic
+scenario-level variation beyond the intended Monte Carlo parameter uncertainty.
+
+### Privatisation scenario (S4) [H]
+
+S4 starts with populations already reduced: chamois, bear, deer, and non-target at 50 % of
+baseline; broadleaf at 60 % of baseline. This represents a partially degraded corridor at the
+point of privatisation. Habitat loss then continues at 6 %/yr (×0.5 for deer, ×0.3 for broadleaf).
+The 50 % initial cut and 6 %/yr degradation rate are both heuristic; the 6 %/yr rate in particular
+is very high and produces near-collapse dynamics within 15–20 years regardless of other parameters.
+Test 1–3 %/yr habitat loss as a more moderate central estimate.
+
+### Protected area scenario (S3)
+
+Modelled as idealised strict protection with 100 % compliance from year 2 — an ecological
+upper-bound benchmark, not an empirical forecast. Literature indicates that protected areas
+combining local empowerment, maintained livelihoods, and positive socioeconomic outcomes are
+more likely to achieve conservation success (Oldekop et al. 2016, *Conservation Biology* 30(1):133–141,
+whiterose.ac.uk/87235). The exclusionary PPA modelled here is one scenario, not a universal outcome.
+
+### Emigration model
+
+The emigration rate reporter uses a **synthetic formula** rather than actual modelled departures:
+
+```
+reported rate = 8.0 + secular_trend + income_effect + eco_effect + scenario_effect
+```
+
+where `secular_trend = years_elapsed × 0.12` (if income < 105), adding 6 pp/yr by year 50.
+Scenario-specific additions: S3 +4 pp, S4 +10 pp (hard-coded regardless of other conditions).
+
+This formula is disconnected from the agent-level emigration behaviour (`maybe-emigrate`), which
+separately drives the actual human population trajectory. The chart labelled "emigration rate"
+reflects this formula, not observed departures. The divergence between the formula and agent
+behaviour is a known limitation and a priority area for future revision.
+
+---
+
+## Minimum analysis before interpreting results
+
+Run ≥ 100 stochastic repetitions per scenario; report median and 5th–95th percentile range.
+Priority sensitivity parameters (Ligmann-Zielinska et al. 2020, *JASSS* 23(1):6, jasss.org/23/1/6):
+
+1. Baseline emigration probability (mean and SD) — and whether formula or agent behaviour is used
+2. WTA distribution and agreement-attribute effects (vary all ±50 %)
+3. Hunting mortality rates — especially intensity=0 residual (0–3 %)
+4. Ecological growth rates r and carrying capacities K (broad ranges; data-poor)
+5. Privatisation habitat-loss rate (central 1–3 %; current 6 % is near-extreme)
+6. Protected-area compliance and residual pressure (current: full compliance, 3 % residual hunting)
+7. Agreement duration (test 10, 20, 25 yrs)
+8. Biodiversity index weighting (current: raw-sum; test equal-weight normalised)
+9. Patrol effectiveness (categorical level change vs. proportional multiplier)
+10. Natural population growth rate (current +0.8 %/yr contradicts census data)
 
 ---
 
@@ -106,30 +272,21 @@ Requires ≥ 2 experiments from the last simulation run.
 | NetLogo | 7.0.3 | [netlogo.org](https://www.netlogo.org/download) |
 
 ```bash
-# 1. Clone the repo
 git clone https://github.com/alemaisano/PartEnvModeling_Georgia
 cd PartEnvModeling_Georgia
-
-# 2. Install Python dependencies
 pip install -r requirements.txt
-
-# 3. Point pyNetLogo at your NetLogo installation (Linux / macOS)
-export NETLOGO_HOME="/path/to/NetLogo 7.0.3"
-
-# 4. Run
+# Linux/macOS: export NETLOGO_HOME="/path/to/NetLogo 7.0.3"
 streamlit run app.py
 ```
 
-On **Windows**, `NETLOGO_HOME` is auto-detected from the registry if NetLogo 7
-is installed normally. On **Linux**, the app will attempt to download NetLogo
-automatically on first run if `NETLOGO_HOME` is not set.
+On **Windows**, `NETLOGO_HOME` is auto-detected from the registry.
+On **Linux**, the app downloads NetLogo automatically on first run if `NETLOGO_HOME` is not set.
 
 ---
 
 ## Streamlit Cloud deployment
 
-The repo includes `packages.txt` (installs `openjdk-17-jdk`) and automatic
-NetLogo 7.0.3 download on cold start.  
+Includes `packages.txt` (`openjdk-17-jdk`) and automatic NetLogo 7.0.3 download on cold start.
 Optional: set `NETLOGO_HOME` in **App settings → Secrets** to skip the download.
 
 ---
@@ -145,23 +302,20 @@ README.md
 simulation/
   netlogo_runner.py        Single-run wrapper (pyNetLogo + Java setup)
   batch_runner.py          Monte Carlo / batch runner
-  indicators.py            RDM + Adaptive Pathways logic (reference)
 
-Nlogo_final_model.nlogox   NetLogo 7 XML model (not modified by app)
+Nlogo_final_model.nlogox   NetLogo 7 XML model
 ```
 
 ---
 
 ## Output metrics
 
-All values are indices (baseline = 100 at t = 0) unless noted.
-
 | Column | NetLogo reporter | Description |
 |--------|-----------------|-------------|
 | `pct_accepted` | `report-pct-accepted` | % community accepting agreement |
-| `income_index` | `report-community-income` | Community income index |
-| `biodiversity_index` | `report-total-biodiversity` | Combined biodiversity index |
-| `emigration_rate` | `report-emigration-rate` | Emigration rate %/yr |
+| `income_index` | `report-community-income` | Community livelihood index (baseline = 100) |
+| `biodiversity_index` | `report-total-biodiversity` | Raw-sum biodiversity index (deer-weighted) |
+| `emigration_rate` | `report-emigration-rate` | Synthetic formula (see limitations above) |
 | `human_pop_indexed` | `report-human-pop-indexed` | Human population % of start |
 | `ecosystem_status` | `report-ecosystem-status` | 0 = degraded · 1 = stable · 2 = recovering |
 | `deer_index` | `report-pop-deer` | Deer population % of start |
@@ -169,3 +323,23 @@ All values are indices (baseline = 100 at t = 0) unless noted.
 | `bear_index` | `report-pop-bear` | Brown bear population % of start |
 | `broadleaf_index` | `report-pop-broadleaf` | Broadleaf forest cover % of start |
 | `nontarget_index` | `report-pop-nontarget` | Non-target species % of start |
+
+---
+
+## Key sources
+
+| Source | Geography | Used for |
+|--------|-----------|---------|
+| Geostat 2024 Population Census | Khulo, Shuakhevi, Georgia | BAU demographic benchmark (≈ −3–3.5 %/yr observed decline; model uses +0.8 %/yr — known mismatch) |
+| NACRES/WWF habitat and species mapping | Western Lesser Caucasus | Initial populations; threat directions |
+| ECF programme description — ecocorridorscaucasus.org | South Caucasus | Agreement mechanism reference; 10-yr agreement duration (model uses 25 yr default) |
+| ECF wildlife compensation — ecocorridorscaucasus.org/wildlife-compensation | Georgia | Predator-compensation switch mechanism |
+| Salmanpour et al. (2025) — PMC12276821 | Iran/Caspian | Red-deer population dynamics reference (observed net ≈ 2.2 %/yr) |
+| Swenson et al. — SLU epsilon.slu.se/201058.pdf | Sweden | Brown bear recovery growth range (4–5 %/yr) |
+| Donini et al. (2021) — PMC8216891 | European Alps | Deer–chamois competition dynamics reference |
+| Critchlow et al. (2022) — DOI:10.1111/csp2.12746 | Uganda / global | Patrol deterrence effects; spatial limitations noted |
+| Greiner (2015) — ideas.repec.org/a/eee/agisys/v137y2015 | Australian pastoral | Agreement attribute effects on WTA |
+| Collective PES review — *Ecology and Society* 28(1):13 | Multi-country | Tenure security and stable participation |
+| Oldekop et al. (2016) — whiterose.ac.uk/87235 | Global | S3 framing: exclusionary PPA outcomes vary |
+| FAO Forest Resources Assessment 2025 — openknowledge.fao.org | Georgia / global | Broadleaf forest dynamics reference |
+| Ligmann-Zielinska et al. (2020) — jasss.org/23/1/6 | ABM methodology | Sensitivity-analysis design for data-poor ABMs |
