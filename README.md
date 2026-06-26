@@ -199,7 +199,14 @@ as a heuristic long-run trend.
 
 **Agreement duration: 25 years** (model default).
 ECF's documented programme uses 10-year conservation agreements
-(Eco Corridor Foundation, ecocorridorscaucasus.org). The 25-year default is more more optimistic about negotiation dynamics; test 10 and 20 years in sensitivity analysis.
+(Eco Corridor Foundation, ecocorridorscaucasus.org). The 25-year default is more optimistic about renewal dynamics; test 10 and 20 years in sensitivity analysis.
+
+**Agreement momentum:** When an agreement expires, benefits do not snap to zero immediately.
+An `agreement-momentum` variable (1.0 while active) decays at ×0.80/yr after expiry,
+scaling all income boosts continuously. After 5 years: ≈33 % of original boost; after 10 years: ≈11 %.
+Agent reversion is also probabilistic: each year an agent reverts with probability `1 − momentum`,
+so the community unwinds gradually rather than all at once. This reflects that learned behaviours,
+established relationships, and capital investments do not disappear overnight when a formal agreement ends.
 
 WTA adjustment **directions** are supported by the conservation contract literature;
 **exact magnitudes are exploratory**. Compensation, tenure, obligations, duration and flexibility
@@ -234,6 +241,15 @@ upper-bound benchmark, not an empirical forecast. Literature indicates that prot
 combining local empowerment, maintained livelihoods, and positive socioeconomic outcomes are
 more likely to achieve conservation success (Oldekop et al. 2016, *Conservation Biology* 30(1):133–141,
 whiterose.ac.uk/87235). The exclusionary PPA modelled here is one scenario, not a universal outcome.
+
+### Income model
+
+The community income index changes each tick by `net-change`, a sum of all active boosts (education,
+market access, self-sustain, patrol income, etc.) minus costs (hunting restrictions, logging costs,
+grazing facility, predator damage). A stochastic noise term `N(0, 1.0)` is added each tick to
+represent the natural year-to-year variation in rural incomes (weather, markets, household shocks)
+that the deterministic model otherwise smooths out. This produces visible "wobbling" around the
+underlying trend without altering the long-run trajectory.
 
 ### Emigration model
 

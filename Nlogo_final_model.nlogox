@@ -80,6 +80,7 @@ globals [
   ;; Agreement duration tracking
   agreement-year-start
   agreement-active?
+  agreement-momentum       ;; 1.0 while active; decays ×0.80/yr after expiry for gradual trajectory change
 
   ;; Agent behaviour parameters (set before setup by pyNetLogo)
   wta-mean wta-sd
@@ -109,6 +110,7 @@ to setup
   set emigrants-this-year 0
   set agreement-year-start 0
   set agreement-active? (scenario = 2)
+  set agreement-momentum (ifelse-value (scenario = 2) [ 1.0 ] [ 0.0 ])
 
   set pop-chamois    200    set K-chamois    600
   set pop-bear        40    set K-bear       120
@@ -260,6 +262,9 @@ to go
     if years-elapsed > agreement-duration [
       set agreement-active? false
     ]
+    ifelse agreement-active?
+      [ set agreement-momentum 1.0 ]
+      [ set agreement-momentum max list 0.0 (agreement-momentum * 0.80) ]
   ]
 
   apply-scenario-tick-rules
@@ -329,8 +334,11 @@ to update-willingness-to-accept
   if scenario = 4 [ set accepted-agreement? false  stop ]
   if scenario = 3 [ set accepted-agreement? true   stop ]
 
-  ;; Agreement expired: agents revert
-  if not agreement-active? [ set accepted-agreement? false  stop ]
+  ;; Agreement expired: agents revert gradually (probability rises as momentum decays)
+  if not agreement-active? [
+    if random-float 1.0 > agreement-momentum [ set accepted-agreement? false ]
+    stop
+  ]
 
   ;; Once accepted, permanent within active agreement
   if accepted-agreement? [
@@ -624,14 +632,14 @@ to update-income
     merge-lvl >= 0.5 [ 0.5 ]
     [ 0 ])
 
-  let investor-boost     (ifelse-value (investor-active? and scenario = 2)            [ income-investor-boost ] [ 0 ])
-  let edu-boost          (ifelse-value (agreement-education?          and scenario = 2) [ income-edu-boost ] [ 0 ])
-  let market-boost       (ifelse-value (agreement-market-access?      and scenario = 2) [ income-market-boost ] [ 0 ])
-  let selfsustain-boost  (ifelse-value (agreement-selfsustain-incentive? and scenario = 2) [ income-selfsustain ] [ 0 ])
-  ;; Marginal loss incentive: direct cash transfer for foregone income
-  let marginal-loss-comp (ifelse-value (agreement-marginal-loss-incentive? and scenario = 2) [ income-marginal-loss ] [ 0 ])
-  ;; Action count incentive: bonus per action taken
-  let action-bonus (ifelse-value (agreement-action-incentive? and scenario = 2) [ income-action-bonus ] [ 0 ])
+  ;; Agreement boosts scaled by momentum so they fade gradually after expiry
+  let m agreement-momentum
+  let investor-boost     (ifelse-value (investor-active? and scenario = 2)              [ income-investor-boost * m ] [ 0 ])
+  let edu-boost          (ifelse-value (agreement-education?            and scenario = 2) [ income-edu-boost     * m ] [ 0 ])
+  let market-boost       (ifelse-value (agreement-market-access?        and scenario = 2) [ income-market-boost  * m ] [ 0 ])
+  let selfsustain-boost  (ifelse-value (agreement-selfsustain-incentive? and scenario = 2) [ income-selfsustain  * m ] [ 0 ])
+  let marginal-loss-comp (ifelse-value (agreement-marginal-loss-incentive? and scenario = 2) [ income-marginal-loss * m ] [ 0 ])
+  let action-bonus       (ifelse-value (agreement-action-incentive?     and scenario = 2) [ income-action-bonus  * m ] [ 0 ])
 
   let patrol-income (ifelse-value
     patrol-lvl >= 2.5 [ 1.5 ]
@@ -687,11 +695,14 @@ to update-income
     (scenario = 1 and years-elapsed > 15) [ -0.3 ]
     [ 0 ])
 
+  ;; Annual income wobble: stochastic shock (±~2 index points in most years)
+  let income-noise (random-normal 0 1.0)
+
   let net-change (
     merge-boost + investor-boost + edu-boost + market-boost
     + selfsustain-boost + marginal-loss-comp + action-bonus + patrol-income
     - hunt-cost - log-cost - agri-cost - graz-cost - predator-cost
-    + scenario-penalty + sc1-drift
+    + scenario-penalty + sc1-drift + income-noise
   )
 
   set community-income-index max list 10 (community-income-index + net-change)
