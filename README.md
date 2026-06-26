@@ -112,7 +112,7 @@ This is a known limitation and a priority parameter for sensitivity analysis.
 | Chamois | 200 (proxy) | 600 | 0.10 | 0.04–0.18 | L / R / X |
 | Brown bear | 40 | 120 | 0.05 | 0.02–0.10 | L / X |
 | Broadleaf forest | 100 (index) | 200 | 0.03 | 0.01–0.08 | R / X |
-| Non-target biodiversity | 100 (index) | 200 | 0.06 | 0.02–0.12 | H |
+| Non-target biodiversity | 100 (index) | 200 | 0.15 | 0.06–0.30 | H |
 
 **Red deer — 400 individuals, K = 1 200, r = 0.11 [L/R/X]**
 Initial population consistent with survey estimates of 325–527 individuals in and around
@@ -142,10 +142,19 @@ K = 200 implies doubling above baseline — more a policy aspiration than a curr
 FAO *Global Forest Resources Assessment 2025* (openknowledge.fao.org) provides reference for
 regional forest dynamics; r = 0.03 is in the upper range for area-based change and more
 appropriate for a quality/density index under active restoration.
+Logging kill rate at intensity=1 was reduced from 4 % to 2 %/yr so that BAU pressure (2 %/yr)
+does not exceed r (3 %/yr): previously, broadleaf had no stable equilibrium and collapsed to 0
+regardless of governance. With 2 %/yr, BAU equilibrium is ≈67 % of starting index;
+community planting under S2 allows recovery toward 100 %+.
 
-**Non-target biodiversity — K = 200, r = 0.06 [H]**
-Composite placeholder for all non-focal species; parameter is entirely heuristic.
-Vary 0.02–0.12 in sensitivity analysis.
+**Non-target biodiversity — K = 200, r = 0.15 [H]**
+Composite placeholder for all non-focal species (small mammals, birds, invertebrates, reptiles).
+Many of these have high intrinsic growth rates (r > 0.20); r = 0.15 is a central composite estimate.
+At this value, BAU pressure (0.11/yr combined) produces a gradual decline of ≈3.5 %/yr from starting
+density, with a BAU equilibrium at ≈27 % of K. Patrol under S2 (rangers active, hunt→0) halves total
+pressure to ≈0.06/yr, allowing recovery toward 60 % of K. Community planting (agreement switch) also
+boosts non-target r via habitat improvement, as it does for broadleaf.
+Vary 0.06–0.30 in sensitivity analysis.
 
 **Biodiversity index [H]**
 Raw-sum index: (total current pop.) / (total initial pop.) × 100, so each species is weighted
@@ -165,13 +174,15 @@ These rates are the largest source of uncertainty in the model.
 | Intensity level | Hunting mortality | Logging mortality | Agricultural pressure |
 |-----------------|------------------|------------------|-----------------------|
 | 0 — none | 3.0 % | 1.0 % | 1.0 % |
-| 1 — low (subsistence) | 8.0 % | 4.0 % | 3.0 % |
+| 1 — low (subsistence) | 8.0 % | 2.0 % | 3.0 % |
 | 2 — medium (BAU) | 18.0 % | 10.0 % | 6.0 % |
 
 **Note:** Intensity = 0 produces non-zero mortality (3 % hunting, 1 % logging, 1 % agriculture).
 This represents residual background pressure even under a nominal ban, and means the S3
 protected-area scenario retains some ecological pressure throughout. Whether this is realistic
 depends on actual enforcement capacity; vary intensity-0 rates across 0–3 % in sensitivity analysis.
+Logging intensity = 1 was reduced from 4 % to 2 %/yr to prevent broadleaf collapse under BAU
+(previously logging kill exceeded growth rate at all densities, so broadleaf had no stable equilibrium).
 
 **Patrol effectiveness** modifies the categorical hunt-intensity level directly:
 Low patrol (+0/−0 depending on year), Medium patrol (−1 level), High patrol (−2 levels).
@@ -188,8 +199,7 @@ as a heuristic long-run trend.
 
 **Agreement duration: 25 years** (model default).
 ECF's documented programme uses 10-year conservation agreements
-(Eco Corridor Foundation, ecocorridorscaucasus.org). The 25-year default is more pessimistic
-about renewal dynamics; test 10 and 20 years in sensitivity analysis.
+(Eco Corridor Foundation, ecocorridorscaucasus.org). The 25-year default is more more optimistic about negotiation dynamics; test 10 and 20 years in sensitivity analysis.
 
 WTA adjustment **directions** are supported by the conservation contract literature;
 **exact magnitudes are exploratory**. Compensation, tenure, obligations, duration and flexibility

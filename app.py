@@ -116,7 +116,7 @@ ECO_PARAMS: dict[str, dict] = {
     "r-chamois":    {"label":"Chamois growth rate (r)",     "group":"Growth rates",        "default":0.10, "lo":0.02,"hi":0.30,"step":0.005,"fmt":"%.3f"},
     "r-bear":       {"label":"Bear growth rate (r)",        "group":"Growth rates",        "default":0.05, "lo":0.01,"hi":0.15,"step":0.005,"fmt":"%.3f"},
     "r-broadleaf":  {"label":"Broadleaf growth rate (r)",   "group":"Growth rates",        "default":0.03, "lo":0.01,"hi":0.10,"step":0.005,"fmt":"%.3f"},
-    "r-nontarget":  {"label":"Non-target growth rate (r)",  "group":"Growth rates",        "default":0.06, "lo":0.01,"hi":0.15,"step":0.005,"fmt":"%.3f"},
+    "r-nontarget":  {"label":"Non-target growth rate (r)",  "group":"Growth rates",        "default":0.15, "lo":0.01,"hi":0.30,"step":0.005,"fmt":"%.3f"},
     "K-deer":       {"label":"Deer carrying capacity (K)",  "group":"Carrying capacities", "default":1200, "lo":400, "hi":3000,"step":50,   "fmt":"%.0f"},
     "K-chamois":    {"label":"Chamois carrying cap. (K)",   "group":"Carrying capacities", "default":600,  "lo":200, "hi":1500,"step":50,   "fmt":"%.0f"},
     "K-bear":       {"label":"Bear carrying cap. (K)",      "group":"Carrying capacities", "default":120,  "lo":40,  "hi":300, "step":5,    "fmt":"%.0f"},

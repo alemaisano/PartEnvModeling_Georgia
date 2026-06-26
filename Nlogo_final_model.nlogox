@@ -126,7 +126,7 @@ to setup
   set r-bear      0.05   ;; netto con kill 0.03 = +0.02 -> ma bear ha hunt=0 quindi scende poco
   set r-deer      0.11   ;; netto con kill 0.08 = +0.03 -> quasi piatto
   set r-broadleaf 0.03   ;; netto con kill 0.04 = -0.01 -> lieve declino
-  set r-nontarget 0.06   ;; netto con kill 0.08+0.03 = -0.05 -> declino
+  set r-nontarget 0.15   ;; composite fast-reproducing species; BAU kill 0.11 → ~3.5%/yr decline, recovers under S2 patrol
 
   set hunt-chamois   1
   set hunt-bear      0
@@ -533,7 +533,7 @@ to update-species-populations
   let k-nt (hunt-to-kill-rate hunt-nontarget + agri-to-mortality agri-intensity)
   set pop-nontarget max list 0 (
     pop-nontarget
-    + pop-nontarget * (r-nontarget + eco-mod + selfsustain-eco-boost)
+    + pop-nontarget * (r-nontarget + eco-mod + selfsustain-eco-boost + plant-boost)
       * (1 - pop-nontarget / K-nontarget)
     - pop-nontarget * k-nt
   )
@@ -589,9 +589,9 @@ end
 
 to-report log-to-kill-rate [ intensity ]
   if intensity = 0 [ report 0.01 ]
-  if intensity = 1 [ report 0.04 ]
+  if intensity = 1 [ report 0.02 ]   ;; reduced: 0.04 caused broadleaf collapse (kill > r at all densities)
   if intensity = 2 [ report 0.10 ]
-  report 0.04
+  report 0.02
 end
 
 to-report agri-to-mortality [ intensity ]
