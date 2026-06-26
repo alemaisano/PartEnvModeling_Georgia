@@ -112,16 +112,16 @@ S2_PALETTE = ["#f59e0b","#3b82f6","#8b5cf6","#22c55e","#f97316","#6366f1","#ec48
 
 # ── Ecological parameters (applied as post_setup after NetLogo setup()) ────────
 ECO_PARAMS: dict[str, dict] = {
-    "r-deer":       {"label":"Deer growth rate (r)",        "group":"Growth rates",        "default":0.11, "lo":0.02,"hi":0.30,"step":0.005,"fmt":"%.3f"},
-    "r-chamois":    {"label":"Chamois growth rate (r)",     "group":"Growth rates",        "default":0.10, "lo":0.02,"hi":0.30,"step":0.005,"fmt":"%.3f"},
-    "r-bear":       {"label":"Bear growth rate (r)",        "group":"Growth rates",        "default":0.05, "lo":0.01,"hi":0.15,"step":0.005,"fmt":"%.3f"},
-    "r-broadleaf":  {"label":"Broadleaf growth rate (r)",   "group":"Growth rates",        "default":0.03, "lo":0.01,"hi":0.10,"step":0.005,"fmt":"%.3f"},
-    "r-nontarget":  {"label":"Non-target growth rate (r)",  "group":"Growth rates",        "default":0.06, "lo":0.01,"hi":0.15,"step":0.005,"fmt":"%.3f"},
+    "r-deer":       {"label":"Deer growth rate (r)",        "group":"Growth rates",        "default":0.07, "lo":0.02,"hi":0.15,"step":0.005,"fmt":"%.3f"},
+    "r-chamois":    {"label":"Chamois growth rate (r)",     "group":"Growth rates",        "default":0.06, "lo":0.02,"hi":0.12,"step":0.005,"fmt":"%.3f"},
+    "r-bear":       {"label":"Bear growth rate (r)",        "group":"Growth rates",        "default":0.04, "lo":0.01,"hi":0.08,"step":0.005,"fmt":"%.3f"},
+    "r-broadleaf":  {"label":"Broadleaf growth rate (r)",   "group":"Growth rates",        "default":0.01, "lo":0.005,"hi":0.05,"step":0.005,"fmt":"%.3f"},
+    "r-nontarget":  {"label":"Non-target growth rate (r)",  "group":"Growth rates",        "default":0.04, "lo":0.01,"hi":0.08,"step":0.005,"fmt":"%.3f"},
     "K-deer":       {"label":"Deer carrying capacity (K)",  "group":"Carrying capacities", "default":1200, "lo":400, "hi":3000,"step":50,   "fmt":"%.0f"},
     "K-chamois":    {"label":"Chamois carrying cap. (K)",   "group":"Carrying capacities", "default":600,  "lo":200, "hi":1500,"step":50,   "fmt":"%.0f"},
-    "K-bear":       {"label":"Bear carrying cap. (K)",      "group":"Carrying capacities", "default":120,  "lo":40,  "hi":300, "step":5,    "fmt":"%.0f"},
-    "K-broadleaf":  {"label":"Broadleaf carrying cap. (K)", "group":"Carrying capacities", "default":200,  "lo":80,  "hi":500, "step":10,   "fmt":"%.0f"},
-    "K-nontarget":  {"label":"Non-target carrying cap. (K)","group":"Carrying capacities", "default":200,  "lo":80,  "hi":500, "step":10,   "fmt":"%.0f"},
+    "K-bear":       {"label":"Bear carrying cap. (K)",      "group":"Carrying capacities", "default":80,   "lo":30,  "hi":150, "step":5,    "fmt":"%.0f"},
+    "K-broadleaf":  {"label":"Broadleaf carrying cap. (K)", "group":"Carrying capacities", "default":150,  "lo":80,  "hi":400, "step":10,   "fmt":"%.0f"},
+    "K-nontarget":  {"label":"Non-target carrying cap. (K)","group":"Carrying capacities", "default":150,  "lo":80,  "hi":400, "step":10,   "fmt":"%.0f"},
     "pop-deer":     {"label":"Initial deer population",     "group":"Initial populations", "default":400,  "lo":100, "hi":800, "step":10,   "fmt":"%.0f"},
     "pop-chamois":  {"label":"Initial chamois population",  "group":"Initial populations", "default":200,  "lo":50,  "hi":400, "step":10,   "fmt":"%.0f"},
     "pop-bear":     {"label":"Initial bear population",     "group":"Initial populations", "default":40,   "lo":10,  "hi":100, "step":2,    "fmt":"%.0f"},
@@ -138,9 +138,9 @@ ECO_PARAMS: dict[str, dict] = {
 # ── Agent behaviour parameters (applied BEFORE setup() so initialise-human uses them)
 AGENT_PARAMS: dict[str, dict] = {
     "wta-mean": {"label":"WTA mean",              "group":"Agent behaviour", "default":0.45,"lo":0.10,"hi":0.90,"step":0.01, "fmt":"%.2f"},
-    "wta-sd":   {"label":"WTA std dev",           "group":"Agent behaviour", "default":0.20,"lo":0.01,"hi":0.40,"step":0.01, "fmt":"%.2f"},
-    "ptl-mean": {"label":"Propensity-to-leave μ", "group":"Agent behaviour", "default":0.08,"lo":0.01,"hi":0.30,"step":0.005,"fmt":"%.3f"},
-    "ptl-sd":   {"label":"Propensity-to-leave σ", "group":"Agent behaviour", "default":0.05,"lo":0.005,"hi":0.20,"step":0.005,"fmt":"%.3f"},
+    "wta-sd":   {"label":"WTA std dev",           "group":"Agent behaviour", "default":0.15,"lo":0.01,"hi":0.40,"step":0.01, "fmt":"%.2f"},
+    "ptl-mean": {"label":"Propensity-to-leave μ", "group":"Agent behaviour", "default":0.030,"lo":0.005,"hi":0.15,"step":0.005,"fmt":"%.3f"},
+    "ptl-sd":   {"label":"Propensity-to-leave σ", "group":"Agent behaviour", "default":0.020,"lo":0.002,"hi":0.10,"step":0.002,"fmt":"%.3f"},
     "opp-mean": {"label":"Opportunity percep. μ", "group":"Agent behaviour", "default":0.20,"lo":0.05,"hi":0.60,"step":0.01, "fmt":"%.2f"},
     "opp-sd":   {"label":"Opportunity percep. σ", "group":"Agent behaviour", "default":0.08,"lo":0.01,"hi":0.25,"step":0.005,"fmt":"%.3f"},
 }
@@ -585,7 +585,7 @@ with st.sidebar:
 
         # ── Run settings ──────────────────────────────────────────────────────
         sim_years = st.slider("Simulation years", 10, 50, 30, 5, key="sim_yrs")
-        agr_dur   = st.slider("Agreement duration (yrs)", 5, 50, 25, 5, key="agr_dur")
+        agr_dur   = st.slider("Agreement duration (yrs)", 5, 50, 10, 5, key="agr_dur")
         n_runs    = st.slider("MC runs per experiment", 3, 100, 10, 1, key="n_runs")
 
         n_total = sum(1 for v in st.session_state.ref_includes.values() if v) + len(st.session_state.s2_queue)
