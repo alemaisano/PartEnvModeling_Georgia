@@ -19,7 +19,7 @@ ROOT = Path(__file__).parent
 
 # Plotly chart config: show toolbar on hover, only the camera (download) button
 _PCFG = {"displayModeBar": "hover", "modeBarButtonsToKeep": ["toImage"],
-          "displaylogo": False, "toImageButtonOptions": {"format": "png", "scale": 2}}
+          "displaylogo": False, "toImageButtonOptions": {"format": "png", "scale": 4}}
 MODEL_PATH = str(ROOT / "Nlogo_final_model.nlogox")
 sys.path.insert(0, str(ROOT))
 
@@ -423,7 +423,7 @@ def species_chart(results_or_list, *, multi=False, sp_filter=None,
                 if t is None:
                     continue
                 _draw_band(fig, t, p10, p25, p50, p75, p90, sc,
-                           name=sp_name, showlegend=False, show_unc=show_unc,
+                           name=sp_name, showlegend=True, show_unc=show_unc,
                            row=row, col=col)
 
     else:
@@ -440,13 +440,12 @@ def species_chart(results_or_list, *, multi=False, sp_filter=None,
                         continue
                     if one_exp:
                         color, label, lg = sc, sp_name, sp_col
-                        show = False
                     else:
                         color = exp["color"]
                         label = exp["name"]
                         lg = exp["name"]
-                        show = lg not in _seen_lg
-                        _seen_lg.add(lg)
+                    show = lg not in _seen_lg
+                    _seen_lg.add(lg)
                     n_before = len(fig.data)
                     _draw_band(fig, t, p10, p25, p50, p75, p90, color,
                                name=label, showlegend=show, show_unc=show_unc,
@@ -459,21 +458,21 @@ def species_chart(results_or_list, *, multi=False, sp_filter=None,
                         fig.data[-1].line.dash = DASHES[sp_idx % len(DASHES)]
 
     for r, c in panel_positions:
-        fig.update_xaxes(title_text="years", title_font=dict(size=8),
-                         tickfont=dict(size=8), row=r, col=c)
-        fig.update_yaxes(title_text="index", title_font=dict(size=8),
-                         tickfont=dict(size=8), row=r, col=c)
+        fig.update_xaxes(title_text="years", title_font=dict(size=12),
+                         tickfont=dict(size=12), row=r, col=c)
+        fig.update_yaxes(title_text="index", title_font=dict(size=12),
+                         tickfont=dict(size=12), row=r, col=c)
 
-    show_legend = multi and len(results_or_list) > 1
-    n_exp = len(results_or_list) if multi else 1
-    n_leg_rows = max(1, n_exp // 3) if show_legend else 0
-    leg_y = -0.04 - 0.06 * n_leg_rows
+    # Shared legend: 5 species in single mode, n_exp entries in multi mode
+    n_items = len(SPECIES_PANELS) if not multi else max(1, len(results_or_list))
+    n_leg_rows = max(1, (n_items + 4) // 5)
+    leg_y = -0.05 - 0.07 * n_leg_rows
     fig.update_layout(
         height=height,
-        showlegend=show_legend,
-        margin=dict(l=42, r=6, t=40, b=max(20, 20 + 22 * n_leg_rows)),
+        showlegend=True,
+        margin=dict(l=42, r=6, t=40, b=max(55, 40 + 30 * n_leg_rows)),
         legend=dict(orientation="h", yanchor="top", y=leg_y,
-                    xanchor="center", x=0.5, font=dict(size=8),
+                    xanchor="center", x=0.5, font=dict(size=12),
                     itemclick="toggle", itemdoubleclick="toggleothers"),
         paper_bgcolor="white", plot_bgcolor="#f8f9fa",
     )
