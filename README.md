@@ -6,6 +6,8 @@ modelling community-led conservation governance in rural Georgia (South Caucasus
 
 **Live app:** https://partenvmodgeorgia.streamlit.app/
 
+**Tutorial to use the live app:**https://youtu.be/660jUOIvs0Y
+
 > **Important:** This model is an exploratory scenario-comparison tool, not a forecast.
 > Parameters marked as heuristic assumptions (see evidence codes below) should be varied
 > in sensitivity analysis before interpreting differences between scenarios.
