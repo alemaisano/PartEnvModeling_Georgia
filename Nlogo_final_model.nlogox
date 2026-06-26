@@ -321,21 +321,21 @@ end
 to update-willingness-to-accept
 
   if scenario = 1 [ set accepted-agreement? false  stop ]
-  if scenario = 4 [ set accepted-agreement? false  stop ]
-  if scenario = 3 [ set accepted-agreement? true   stop ]
 
-  ;; Agreement expired: agents revert gradually (probability rises as momentum decays)
-  if not agreement-active? [
+  ;; S2 only: check whether agreement has expired and decay momentum
+  if (scenario = 2 and not agreement-active?) [
     if random-float 1.0 > agreement-momentum [ set accepted-agreement? false ]
     stop
   ]
 
-  ;; Once accepted, permanent within active agreement
+  ;; Once accepted, stay accepted — but can drop out from uncompensated predator damage
+  ;; or from severe income loss (S3/S4: no compensation scheme available)
   if accepted-agreement? [
-    ;; BUT: predator damage erodes WTA unless compensated
     if (not agreement-predator-compensation? and predator-damage-experienced > 0.5) [
-      ;; High uncompensated damage -> risk of dropping out
       if random-float 1.0 < 0.05 [ set accepted-agreement? false ]
+    ]
+    if (scenario != 2 and income-growth < 80 and random-float 1.0 < 0.08) [
+      set accepted-agreement? false
     ]
     stop
   ]

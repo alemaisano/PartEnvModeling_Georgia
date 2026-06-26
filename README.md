@@ -211,6 +211,18 @@ as a heuristic long-run trend.
 ECF's documented programme uses 10-year conservation agreements
 (Eco Corridor Foundation, ecocorridorscaucasus.org). The 25-year default is more optimistic about renewal dynamics; test 10 and 20 years in sensitivity analysis.
 
+**S3 and S4 acceptance (pct_accepted):** In all scenarios, agent willingness-to-accept (WTA)
+evolves from the same initial distribution and is updated each tick based on income, opportunity
+perception, and predator damage. The metric `pct_accepted` is therefore meaningful and comparable
+across scenarios:
+- S3: reflects the fraction of the community that genuinely *supports* strict conservation (vs.
+  complying reluctantly). Income falls under the S3 penalty → WTA erodes over time → declining
+  community support despite ecological success. Dropout via uncompensated predator damage (5 %/yr).
+- S4: reflects community disposition toward conservation values despite privatisation. Income
+  stays higher (investor boost) but ecosystem degradation raises predator damage and, if income
+  falls below 80, agents withdraw support at 8 %/yr.
+S1 is the only scenario with forced pct_accepted = 0 (no agreement exists).
+
 **Agreement momentum:** When an agreement expires, benefits do not snap to zero immediately.
 An `agreement-momentum` variable (1.0 while active) decays at ×0.80/yr after expiry,
 scaling all income boosts continuously. After 5 years: ≈33 % of original boost; after 10 years: ≈11 %.
