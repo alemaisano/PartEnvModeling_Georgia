@@ -165,6 +165,11 @@ This weighting choice is a known limitation: consider disaggregated species-leve
 bear and broadleaf when interpreting results.
 Ecosystem status thresholds: Low < 75, Medium 75–130, High > 130.
 
+**Species index bounds:** Each species population is clamped to 30–200 % of its starting value
+(i.e. the index shown in charts never goes below 30 or above 200). The lower bound represents
+a minimum viable population floor given model uncertainty; the upper bound prevents ecologically
+implausible recovery beyond double the starting abundance within the modelled time horizon.
+
 ### Pressure parameters [H informed by L/X]
 
 Local evidence supports the direction of threats (hunting, logging, grazing, disturbance);
