@@ -398,8 +398,7 @@ behaviour is a known limitation and a priority area for future revision.
 
 ## Minimum analysis before interpreting results
 
-<<<<<<< HEAD
-Run ≥ 100 stochastic repetitions per scenario; report median and 5th–95th percentile range.
+Run multiple stochastic repetitions per scenario; report median and 5th–95th percentile range.
 Priority sensitivity parameters ([Ligmann-Zielinska et al. 2020, *JASSS* 23(1):6](https://www.jasss.org/23/1/6.html)):
 =======
 Run multiple stochastic repetitions per scenario; report median and 5th–95th percentile range.
