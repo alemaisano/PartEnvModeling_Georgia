@@ -181,13 +181,13 @@ SPECIES = {
     "nontarget_index": ("#9370DB", "Non-target"),
 }
 
-# 4-panel layout: (panel title, [(col, color, label), ...])
+# 5-panel layout: one species per panel
 SPECIES_PANELS = [
-    ("Deer",                   [("deer_index",      "#A0522D", "Deer")]),
-    ("Chamois",                [("chamois_index",   "#228B22", "Chamois")]),
-    ("Brown Bear",             [("bear_index",      "#4169E1", "Brown Bear")]),
-    ("Broadleaf & Non-target", [("broadleaf_index", "#2E8B57", "Broadleaf"),
-                                ("nontarget_index", "#9370DB", "Non-target")]),
+    ("Deer",       [("deer_index",      "#A0522D", "Deer")]),
+    ("Chamois",    [("chamois_index",   "#228B22", "Chamois")]),
+    ("Brown Bear", [("bear_index",      "#4169E1", "Brown Bear")]),
+    ("Broadleaf",  [("broadleaf_index", "#2E8B57", "Broadleaf")]),
+    ("Non-target", [("nontarget_index", "#9370DB", "Non-target")]),
 ]
 
 DASHBOARD_METRICS = [
@@ -293,7 +293,7 @@ def _base_layout(fig, title, ylabel, height):
     )
 
 
-def small_chart_single(results, col, title, color, ylabel, show_unc=True, height=200):
+def small_chart_single(results, col, title, color, ylabel, show_unc=True, height=220):
     fig = go.Figure()
     t, p10, p25, p50, p75, p90 = _percentiles(results, col)
     if t is not None:
@@ -392,9 +392,9 @@ def metrics_chart_multi(run_results, show_unc=True, height=660):
 
 
 def species_chart(results_or_list, *, multi=False, sp_filter=None,
-                  exp_filter=None, show_unc=True, height=700):
+                  exp_filter=None, show_unc=True, height=660):
     """
-    4-panel species chart (2×2 subplots): Deer / Chamois / Brown Bear / Broadleaf+Non-target.
+    5-panel species chart (3×2 subplots): Deer / Chamois / Brown Bear / Broadleaf / Non-target.
     single mode : results_or_list is list[pd.DataFrame] for one experiment.
     multi mode  : results_or_list is list[{name, color, results}].
     exp_filter  : list of experiment names to display (None = all, multi only).
@@ -403,16 +403,16 @@ def species_chart(results_or_list, *, multi=False, sp_filter=None,
     from plotly.subplots import make_subplots
     DASHES = ["solid", "dash", "dot", "dashdot", "longdash"]
 
-    panel_titles = [p[0] for p in SPECIES_PANELS]
+    panel_titles = [p[0] for p in SPECIES_PANELS] + [""]  # 6th cell empty
     fig = make_subplots(
-        rows=2, cols=2,
+        rows=3, cols=2,
         subplot_titles=panel_titles,
         shared_xaxes=False,
         shared_yaxes=False,
-        horizontal_spacing=0.10,
-        vertical_spacing=0.18,
+        horizontal_spacing=0.12,
+        vertical_spacing=0.12,
     )
-    panel_positions = [(1, 1), (1, 2), (2, 1), (2, 2)]
+    panel_positions = [(1, 1), (1, 2), (2, 1), (2, 2), (3, 1)]
     _seen_lg: set = set()
 
     if not multi:
@@ -422,10 +422,8 @@ def species_chart(results_or_list, *, multi=False, sp_filter=None,
                 t, p10, p25, p50, p75, p90 = _percentiles(results, sp_col)
                 if t is None:
                     continue
-                show = sp_col not in _seen_lg
-                _seen_lg.add(sp_col)
                 _draw_band(fig, t, p10, p25, p50, p75, p90, sc,
-                           name=sp_name, showlegend=show, show_unc=show_unc,
+                           name=sp_name, showlegend=False, show_unc=show_unc,
                            row=row, col=col)
 
     else:
@@ -442,13 +440,13 @@ def species_chart(results_or_list, *, multi=False, sp_filter=None,
                         continue
                     if one_exp:
                         color, label, lg = sc, sp_name, sp_col
+                        show = False
                     else:
                         color = exp["color"]
-                        label = (f"{exp['name']} — {sp_name}"
-                                 if len(species_list) > 1 else exp["name"])
-                        lg = f"{exp['name']}_{sp_col}"
-                    show = lg not in _seen_lg
-                    _seen_lg.add(lg)
+                        label = exp["name"]
+                        lg = exp["name"]
+                        show = lg not in _seen_lg
+                        _seen_lg.add(lg)
                     n_before = len(fig.data)
                     _draw_band(fig, t, p10, p25, p50, p75, p90, color,
                                name=label, showlegend=show, show_unc=show_unc,
@@ -466,12 +464,14 @@ def species_chart(results_or_list, *, multi=False, sp_filter=None,
         fig.update_yaxes(title_text="index", title_font=dict(size=8),
                          tickfont=dict(size=8), row=r, col=c)
 
+    show_legend = multi and len(results_or_list) > 1
     n_exp = len(results_or_list) if multi else 1
-    n_leg_rows = max(1, (len(SPECIES_PANELS) + n_exp - 1) // 3)
+    n_leg_rows = max(1, n_exp // 3) if show_legend else 0
     leg_y = -0.04 - 0.06 * n_leg_rows
     fig.update_layout(
         height=height,
-        margin=dict(l=42, r=6, t=50, b=max(70, 30 + 22 * n_leg_rows)),
+        showlegend=show_legend,
+        margin=dict(l=42, r=6, t=40, b=max(20, 20 + 22 * n_leg_rows)),
         legend=dict(orientation="h", yanchor="top", y=leg_y,
                     xanchor="center", x=0.5, font=dict(size=8),
                     itemclick="toggle", itemdoubleclick="toggleothers"),
@@ -767,7 +767,7 @@ if page == "🗺 Simulate":
         rr_filtered = rr
 
     # ── Main chart layout ────────────────────────────────────────────────────
-    col_left, col_right = st.columns([3, 2], gap="small")
+    col_left, col_right = st.columns([1, 1], gap="small")
 
     with col_right:
         if single:

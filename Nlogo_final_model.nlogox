@@ -695,8 +695,10 @@ to update-income
     (scenario = 1 and years-elapsed > 15) [ -0.3 ]
     [ 0 ])
 
-  ;; Annual income wobble: stochastic shock (±~2 index points in most years)
-  let income-noise (random-normal 0 1.0)
+  ;; Income volatility: baseline wobble + infrequent crisis shocks (~8% years)
+  let base-noise (random-normal 0 2.5)
+  let crisis-shock (ifelse-value (random-float 1.0 < 0.08) [ random-normal -12 4 ] [ 0 ])
+  let income-noise (base-noise + crisis-shock)
 
   let net-change (
     merge-boost + investor-boost + edu-boost + market-boost
