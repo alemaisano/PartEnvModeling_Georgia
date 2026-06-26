@@ -298,7 +298,7 @@ behaviour is a known limitation and a priority area for future revision.
 
 ## Minimum analysis before interpreting results
 
-Run ≥ 100 stochastic repetitions per scenario; report median and 5th–95th percentile range.
+Run multiple stochastic repetitions per scenario; report median and 5th–95th percentile range.
 Priority sensitivity parameters (Ligmann-Zielinska et al. 2020, *JASSS* 23(1):6, jasss.org/23/1/6):
 
 1. Baseline emigration probability (mean and SD) — and whether formula or agent behaviour is used
