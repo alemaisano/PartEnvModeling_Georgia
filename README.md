@@ -269,10 +269,12 @@ whiterose.ac.uk/87235). The exclusionary PPA modelled here is one scenario, not 
 
 The community income index changes each tick by `net-change`, a sum of all active boosts (education,
 market access, self-sustain, patrol income, etc.) minus costs (hunting restrictions, logging costs,
-grazing facility, predator damage). A stochastic noise term `N(0, 1.0)` is added each tick to
-represent the natural year-to-year variation in rural incomes (weather, markets, household shocks)
-that the deterministic model otherwise smooths out. This produces visible "wobbling" around the
-underlying trend without altering the long-run trajectory.
+grazing facility, predator damage). Two stochastic components are added each tick:
+
+- **Baseline noise** `N(0, 2.5)`: year-to-year variation from weather, markets, and household shocks (±~5 index points in most years).
+- **Crisis shocks**: with probability 8 % per year, an additional `N(−12, 4)` shock is applied, representing irregular but recurring crises (crop failure, market collapse, disease). Expected frequency: roughly one crisis every 12 years.
+
+Both components apply to all scenarios equally, producing visible wobbling around the underlying trend without altering the long-run direction. Vary the shock frequency (3–15 %) and magnitude (−5 to −20) in sensitivity analysis.
 
 ### Emigration model
 
@@ -301,7 +303,7 @@ Priority sensitivity parameters (Ligmann-Zielinska et al. 2020, *JASSS* 23(1):6,
 2. WTA distribution and agreement-attribute effects (vary all ±50 %)
 3. Hunting mortality rates — especially intensity=0 residual (0–3 %)
 4. Ecological growth rates r and carrying capacities K (broad ranges; data-poor)
-5. Privatisation habitat-loss rate (central 1–3 %; current 6 % is near-extreme)
+5. Privatisation habitat-loss rate (current 3 %/yr; test 1–6 %)
 6. Protected-area compliance and residual pressure (current: full compliance, 3 % residual hunting)
 7. Agreement duration (test 10, 20, 25 yrs)
 8. Biodiversity index weighting (current: raw-sum; test equal-weight normalised)
